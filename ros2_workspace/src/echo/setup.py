@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'echo_node = echo.echo_node:main'
         ],
     },
 )
