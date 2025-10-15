@@ -9,5 +9,5 @@ docker build -t echo -f docker/.Dockerfile .
 
 Run the container:
 ```shell
-docker run -it echo
+docker run -it -v $(pwd -W)/ros2_workspace:/root/ros2_workspace echo
 ```
