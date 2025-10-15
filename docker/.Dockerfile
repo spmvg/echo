@@ -24,7 +24,7 @@ RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-inf
 
 # Install ROS 2
 RUN apt-get update && \
-    apt-get install -y ros-kilted-ros-base
+    apt-get install -y ros-kilted-ros-base python3-colcon-common-extensions
 
 # Source ROS 2 setup script by default
 SHELL ["/bin/bash", "-c"]
