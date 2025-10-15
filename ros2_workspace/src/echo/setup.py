@@ -13,9 +13,9 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='root',
-    maintainer_email='root@todo.todo',
-    description='TODO: Package description',
+    maintainer='Steven',
+    maintainer_email='steven@vangemert.dev',
+    description='Interactive voice chat system',
     license='AGPL-3.0',
     extras_require={
         'test': [
