@@ -11,3 +11,8 @@ Run the container:
 ```shell
 docker run -it -v $(pwd -W)/ros2_workspace:/root/ros2_workspace echo
 ```
+
+Go to the workspace directory:
+```shell
+cd /root/ros2_workspace
+```
