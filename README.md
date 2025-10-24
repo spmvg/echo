@@ -1,5 +1,5 @@
 # Echo
-Interactive voice chat system.
+Interactive voice chat system. Currently still very much a work in progress.
 
 ## Development setup
 Build the container:
