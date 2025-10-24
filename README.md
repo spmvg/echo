@@ -9,7 +9,7 @@ docker build -t echo -f docker/.Dockerfile .
 
 Run the container:
 ```shell
-docker run -it -v $(pwd -W)/ros2_workspace:/root/ros2_workspace echo
+docker run -it --rm --device /dev/snd -v $(pwd)/ros2_workspace:/root/ros2_workspace echo
 ```
 
 Go to the workspace directory and build the package:
