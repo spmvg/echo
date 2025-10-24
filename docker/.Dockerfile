@@ -24,10 +24,12 @@ RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-inf
 
 # Install ROS 2
 RUN apt-get update && \
-    apt-get install -y ros-kilted-ros-base swig build-essential portaudio19-dev
+    apt-get install -y ros-kilted-ros-base swig build-essential portaudio19-dev alsa-utils espeak-ng libespeak1
 
 # Install Python dependencies
-RUN apt-get install -y python3-colcon-common-extensions python3-pocketsphinx python3-pyaudio python3-coqui-tts
+RUN apt-get install -y python3-pip python3-colcon-common-extensions python3-pocketsphinx python3-pyaudio
+# Python dependencies without distribution via apt
+RUN python3 -m pip install pyttsx3 --break-system-packages
 
 # Source ROS 2 setup script by default
 SHELL ["/bin/bash", "-c"]
