@@ -24,7 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'echo_node = echo.echo_node:main'
+            'stt_onboard = echo.stt_onboard:main'
         ],
     },
 )

@@ -21,5 +21,5 @@ source install/local_setup.bash
 
 Run the package:
 ```shell
-ros2 run echo echo_node
+ros2 run echo stt_onboard
 ```
