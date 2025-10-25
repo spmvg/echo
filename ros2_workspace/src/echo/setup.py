@@ -26,7 +26,7 @@ setup(
     entry_points={
         'console_scripts': [
             'stt_onboard = echo.stt_onboard:main',
-            'speech_logger = echo.speech_logger:main'
+            'tts_onboard = echo.tts_onboard:main'
         ],
     },
 )

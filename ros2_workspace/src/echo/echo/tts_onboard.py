@@ -3,18 +3,13 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 
-class SpeechLogger(Node):
-    """
-    A simple ROS2 node that subscribes to /speech_to_text/transcript (std_msgs/String)
-    and logs received transcripts. Acts as a placeholder for downstream processing.
-    """
-
+class TTSOnboard(Node):
     def __init__(self):
-        super().__init__("speech_logger")
+        super().__init__("tts_onboard")
         self.sub = self.create_subscription(
-            String, "/speech_to_text/transcript", self._on_transcript, 10
+            String, "/tts_onboard/say", self._on_transcript, 10
         )
-        self.get_logger().info("SpeechLogger subscriber started, listening on /speech_to_text/transcript")
+        self.get_logger().info("TTSOnboard subscriber started, listening on /tts_onboard/say")
 
     def _on_transcript(self, msg: String):
         # Placeholder: log the transcript. Replace this with actual processing later.
@@ -27,13 +22,13 @@ class SpeechLogger(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = SpeechLogger()
+    node = TTSOnboard()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
     finally:
-        node.get_logger().info("Shutting down SpeechLogger node")
+        node.get_logger().info("Shutting down TTSOnboard node")
         node.destroy_node()
         rclpy.shutdown()
 

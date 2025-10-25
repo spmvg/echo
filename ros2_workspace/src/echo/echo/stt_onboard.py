@@ -16,12 +16,12 @@ except Exception as e:
 class STTOnboard(Node):
     """
     A simple ROS2 node that listens to the microphone via PocketSphinx LiveSpeech
-    and publishes recognized phrases on /speech_to_text/transcript (std_msgs/String).
+    and publishes recognized phrases on /tts_onboard/say (std_msgs/String).
     """
 
     def __init__(self):
         super().__init__("stt_onboard")
-        self.pub = self.create_publisher(String, "/speech_to_text/transcript", 10)
+        self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
 
         # You can tune LiveSpeech arguments to change language model, keyphrase, thresholds, etc.
         # By default this listens continuously and produces phrases as they are detected.

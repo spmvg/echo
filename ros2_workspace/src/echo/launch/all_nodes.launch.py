@@ -9,14 +9,14 @@ def generate_launch_description():
         output='screen'
     )
 
-    speech_logger_node = Node(
+    tts_onboard_node = Node(
         package='echo',
-        executable='speech_logger',
-        name='speech_logger',
+        executable='tts_onboard',
+        name='tts_onboard',
         output='screen'
     )
 
     return LaunchDescription([
         stt_onboard_node,
-        speech_logger_node
+        tts_onboard_node
     ])
