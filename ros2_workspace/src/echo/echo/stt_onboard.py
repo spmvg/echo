@@ -1,10 +1,8 @@
-#!/usr/bin/env python3
 import threading
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
-# PocketSphinx LiveSpeech import (from pocketsphinx package)
 try:
     from pocketsphinx import LiveSpeech
 except Exception as e:
@@ -15,14 +13,14 @@ except Exception as e:
     ) from e
 
 
-class PocketSphinxNode(Node):
+class STTOnboard(Node):
     """
     A simple ROS2 node that listens to the microphone via PocketSphinx LiveSpeech
     and publishes recognized phrases on /speech_to_text/transcript (std_msgs/String).
     """
 
     def __init__(self):
-        super().__init__("pocketsphinx_listener")
+        super().__init__("stt_onboard")
         self.pub = self.create_publisher(String, "/speech_to_text/transcript", 10)
 
         # You can tune LiveSpeech arguments to change language model, keyphrase, thresholds, etc.
@@ -37,7 +35,7 @@ class PocketSphinxNode(Node):
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
-        self.get_logger().info("PocketSphinx listener started")
+        self.get_logger().info("STTOnboard listener started")
 
     def _listen_loop(self):
         # The LiveSpeech iterator blocks and yields recognized chunks.
@@ -57,13 +55,13 @@ class PocketSphinxNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = PocketSphinxNode()
+    node = STTOnboard()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
     finally:
-        node.get_logger().info("Shutting down pocketsphinx_listener node")
+        node.get_logger().info("Shutting down STTOnboard node")
         node.destroy_node()
         rclpy.shutdown()
 
