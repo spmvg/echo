@@ -31,8 +31,7 @@ RUN apt-get install -y python3-pip python3-colcon-common-extensions python3-pyau
 # Python dependencies without distribution via apt
 RUN python3 -m pip install pocketsphinx pyttsx3 --break-system-packages
 
-# Source ROS 2 setup script by default
-SHELL ["/bin/bash", "-c"]
-RUN echo "source /opt/ros/kilted/setup.bash" >> /root/.bashrc
+ENTRYPOINT ["/bin/bash", "-c"]
+WORKDIR /root/ros2_workspace
 
-CMD ["bash"]
+CMD ["source /opt/ros/kilted/setup.bash && source install/local_setup.bash && colcon build && ros2 run echo stt_onboard"]
