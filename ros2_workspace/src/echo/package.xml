@@ -26,5 +26,8 @@
 
   <export>
     <build_type>ament_python</build_type>
+    <lauch>
+      <file>launch/all_nodes.launch.py</file>
+    </lauch>
   </export>
 </package>

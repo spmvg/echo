@@ -10,6 +10,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name + '/launch', ['launch/all_nodes.launch.py']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -24,7 +25,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'stt_onboard = echo.stt_onboard:main'
+            'stt_onboard = echo.stt_onboard:main',
+            'speech_logger = echo.speech_logger:main'
         ],
     },
 )
