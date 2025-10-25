@@ -34,4 +34,4 @@ RUN python3 -m pip install pocketsphinx pyttsx3 --break-system-packages
 ENTRYPOINT ["/bin/bash", "-c"]
 WORKDIR /root/ros2_workspace
 
-CMD ["source /opt/ros/kilted/setup.bash && source install/local_setup.bash && colcon build && ros2 launch echo all_nodes.launch.py"]
+CMD ["source /opt/ros/kilted/setup.bash && colcon build && source install/local_setup.bash && ros2 launch echo all_nodes.launch.py"]
