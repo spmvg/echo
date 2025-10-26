@@ -22,6 +22,8 @@
   <!-- Python-only runtime dependencies (installed via pip) -->
   <exec_depend>pocketsphinx</exec_depend>
   <exec_depend>pyaudio</exec_depend>
+  <exec_depend>numpy</exec_depend>
+  <exec_depend>sounddevice</exec_depend>
   <exec_depend>pyttsx3</exec_depend>
   <exec_depend>requests</exec_depend>
 

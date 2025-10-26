@@ -28,9 +28,9 @@ RUN apt-get update && \
 
 # Install Python dependencies
 RUN apt-get install -y python3-pip python3-colcon-common-extensions
-RUN apt-get install -y python3-pyaudio python3-requests
+RUN apt-get install -y python3-pyaudio python3-requests python3-numpy
 # Python dependencies without distribution via apt
-RUN python3 -m pip install pocketsphinx pyttsx3 --break-system-packages
+RUN python3 -m pip install pocketsphinx pyttsx3 sounddevice --break-system-packages
 
 ENTRYPOINT ["/bin/bash", "-c"]
 WORKDIR /root/ros2_workspace
