@@ -30,9 +30,6 @@ class TTSOnboard(Node):
         self._worker.start()
         self.get_logger().info("pyttsx3 engine initialized and worker started")
 
-        self._queue.put_nowait("Hello")
-
-
     def _on_transcript(self, msg: String):
         self.get_logger().info(f"Speaking: {msg.data}")
 

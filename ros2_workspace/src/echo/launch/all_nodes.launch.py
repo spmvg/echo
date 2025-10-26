@@ -16,7 +16,15 @@ def generate_launch_description():
         output='screen'
     )
 
+    initialization_node = Node(
+        package='echo',
+        executable='initialization',
+        name='initialization',
+        output='screen'
+    )
+
     return LaunchDescription([
         stt_onboard_node,
-        tts_onboard_node
+        tts_onboard_node,
+        initialization_node,
     ])
