@@ -1,3 +1,5 @@
+from time import sleep
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -12,15 +14,16 @@ class Initialization(Node):
 
         self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
 
-        self.pub.publish("Power on")
+        sleep(2)  # wait for tts node to be started
+        self.pub.publish(String(data="Power on"))
 
         try:
             requests.get("https://www.google.com", timeout=5)
             self.get_logger().info("Internet connected")
-            self.pub.publish("Internet connected")
+            self.pub.publish(String(data="Internet connected"))
         except:
             self.get_logger().warning("No internet connection")
-            self.pub.publish("No internet connection")
+            self.pub.publish(String(data="No internet connection"))
 
 
 def main(args=None):
