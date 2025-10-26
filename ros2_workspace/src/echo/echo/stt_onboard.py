@@ -137,7 +137,7 @@ def make_decoder(wake_word: str) -> Decoder:
     decoder.set_search(WAKE_WORD_MODE)
 
     # --- Add language model search ---
-    decoder.set_lm_file('lm', os.path.join(model_path, 'en-us.lm.bin'))
+    decoder.set_lm_file(LANGUAGE_SEARCH_MODE, os.path.join(model_path, 'en-us.lm.bin'))
 
     return decoder
 
