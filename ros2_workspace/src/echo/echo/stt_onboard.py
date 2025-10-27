@@ -1,7 +1,6 @@
 import os
 import threading
-from collections import deque
-from queue import Queue
+from queue import LifoQueue
 import wave
 from time import time
 
@@ -53,7 +52,7 @@ class STTOnboard(Node):
         Uses PocketSphinx's built-in keyword spotting to listen for a wake word.
         Once detected, starts recording audio until silence and saves it to a .wav file.
         """
-        audio_q = Queue()  # TODO: queue is probably not FILO, consider using deque
+        audio_q = LifoQueue()
         frames = []
 
         def audio_callback(indata, frames, time, status):
