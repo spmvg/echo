@@ -33,6 +33,6 @@ def generate_launch_description():
     return LaunchDescription([
         stt_onboard_node,
         tts_onboard_node,
-        # initialization_node,
+        initialization_node,
         sounds_node,
     ])
