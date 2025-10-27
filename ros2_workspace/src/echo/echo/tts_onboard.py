@@ -3,7 +3,7 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 import threading
-from queue import Queue, Full, Empty
+from queue import LifoQueue, Full, Empty
 
 import pyttsx3
 
@@ -18,7 +18,7 @@ class TTSOnboard(Node):
         self.get_logger().info("TTSOnboard subscriber started, listening on /tts_onboard/say")
 
         # Queue and worker used to avoid blocking the ROS callback while speaking
-        self._queue: Queue = Queue(maxsize=32)
+        self._queue: LifoQueue = LifoQueue(maxsize=32)
         self._stop_event = threading.Event()
         self._engine = None
 
@@ -29,9 +29,6 @@ class TTSOnboard(Node):
         self._worker = threading.Thread(target=self._worker_loop, daemon=True)
         self._worker.start()
         self.get_logger().info("pyttsx3 engine initialized and worker started")
-
-        self._queue.put_nowait("Hello")
-
 
     def _on_transcript(self, msg: String):
         self.get_logger().info(f"Speaking: {msg.data}")
