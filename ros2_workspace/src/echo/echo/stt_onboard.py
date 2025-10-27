@@ -23,6 +23,7 @@ except Exception as e:
 
 WAKE_WORD_MODE = "wakeword"
 LANGUAGE_SEARCH_MODE = "lm"
+BELL_SOUND = "bell_freesound_116779_creative_commons_0"
 
 
 class STTOnboard(Node):
@@ -34,6 +35,7 @@ class STTOnboard(Node):
     def __init__(self):
         super().__init__("stt_onboard")
         self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
+        self.sounds_pub = self.create_publisher(String, "/sounds/play", 10)
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
@@ -86,6 +88,7 @@ class STTOnboard(Node):
                     decoder.start_utt()
                     frames = []
                     speech, speech_updated, start_time = None, time(), time()
+                    self.sounds_pub.publish(String(data=BELL_SOUND))
                     continue
                 elif mode == WAKE_WORD_MODE:
                     continue
@@ -106,6 +109,7 @@ class STTOnboard(Node):
                     ):
                         # Consider utterance complete after a period of no change
                         decoder.end_utt()
+                        self.sounds_pub.publish(String(data=BELL_SOUND))
                         with wave.open('phrase.wav', "wb") as wf:
                             wf.setnchannels(channels)
                             wf.setsampwidth(2)

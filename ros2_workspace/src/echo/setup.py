@@ -28,6 +28,7 @@ setup(
             'stt_onboard = echo.stt_onboard:main',
             'tts_onboard = echo.tts_onboard:main',
             'initialization = echo.initialization:main',
+            'sound_player = echo.sound_player:main',
         ],
     },
 )
