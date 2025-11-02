@@ -35,4 +35,4 @@ RUN python3 -m pip install pocketsphinx pyttsx3 sounddevice --break-system-packa
 ENTRYPOINT ["/bin/bash", "-c"]
 WORKDIR /root/ros2_workspace
 
-CMD ["source /opt/ros/kilted/setup.bash && colcon build && source install/local_setup.bash && ros2 launch echo all_nodes.launch.py"]
+CMD ["source /opt/ros/kilted/setup.bash && colcon build --symlink-install && source install/local_setup.bash && ros2 launch echo all_nodes.launch.py"]

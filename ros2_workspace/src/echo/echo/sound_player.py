@@ -31,9 +31,11 @@ class SoundPlayer(Node):
     def _on_sound_request(self, msg: String):
         wav_type = msg.data.strip()
 
-        if wav_type != "bell_freesound_116779_creative_commons_0":
+        if wav_type not in {
+            "bell_freesound_116779_creative_commons_0",
+            "bell2_freesound_91924_creative_commons_0",
+        }:
             return
-        # TODO: support more sound types
 
         wav_file = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),

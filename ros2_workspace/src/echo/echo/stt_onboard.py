@@ -24,6 +24,7 @@ except Exception as e:
 WAKE_WORD_MODE = "wakeword"
 LANGUAGE_SEARCH_MODE = "lm"
 BELL_SOUND = "bell_freesound_116779_creative_commons_0"
+BELL_END_SOUND = "bell2_freesound_91924_creative_commons_0"
 
 
 class STTOnboard(Node):
@@ -46,7 +47,7 @@ class STTOnboard(Node):
             buffer_size: int = 1024,
             channels: int = 1,
             rate: int = 16000,
-            wake_word: str = "computer",
+            wake_word: str = "hey echo",
             time_to_wait_in_silence_seconds: float = 2.0,
             max_listen_time_seconds: float = 15.0,
     ):
@@ -109,7 +110,7 @@ class STTOnboard(Node):
                     ):
                         # Consider utterance complete after a period of no change
                         decoder.end_utt()
-                        self.sounds_pub.publish(String(data=BELL_SOUND))
+                        self.sounds_pub.publish(String(data=BELL_END_SOUND))
                         with wave.open('phrase.wav', "wb") as wf:
                             wf.setnchannels(channels)
                             wf.setsampwidth(2)
