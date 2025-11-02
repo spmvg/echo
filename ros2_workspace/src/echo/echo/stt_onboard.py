@@ -47,7 +47,7 @@ class STTOnboard(Node):
             buffer_size: int = 1024,
             channels: int = 1,
             rate: int = 16000,
-            wake_word: str = "hey echo",
+            wake_word: str = "echo listen",
             time_to_wait_in_silence_seconds: float = 2.0,
             max_listen_time_seconds: float = 15.0,
     ):
@@ -77,12 +77,12 @@ class STTOnboard(Node):
 
             while True:
                 raw = audio_q.get().tobytes()
-                decoder.process_raw(raw, False, False)
+                decoder.process_raw(raw)
 
                 hyp = decoder.hyp()
 
                 if mode == WAKE_WORD_MODE and hyp:
-                    self.get_logger().info("Wake word detected!")
+                    self.get_logger().info(f"Wake word ({hyp.hypstr}) detected!")
                     mode = LANGUAGE_SEARCH_MODE
                     decoder.end_utt()
                     decoder.set_search(LANGUAGE_SEARCH_MODE)
