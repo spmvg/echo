@@ -1,5 +1,7 @@
 import os
 import threading
+from base64 import b64encode
+from io import BytesIO
 from queue import LifoQueue
 import wave
 from time import time
@@ -24,6 +26,7 @@ except Exception as e:
 WAKE_WORD_MODE = "wakeword"
 LANGUAGE_SEARCH_MODE = "lm"
 BELL_SOUND = "bell_freesound_116779_creative_commons_0"
+BELL_END_SOUND = "bell2_freesound_91924_creative_commons_0"
 
 
 class STTOnboard(Node):
@@ -36,6 +39,7 @@ class STTOnboard(Node):
         super().__init__("stt_onboard")
         self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
         self.sounds_pub = self.create_publisher(String, "/sounds/play", 10)
+        self.ai_pub = self.create_publisher(String, "/speech_ai/audio", 10)
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
@@ -46,7 +50,7 @@ class STTOnboard(Node):
             buffer_size: int = 1024,
             channels: int = 1,
             rate: int = 16000,
-            wake_word: str = "computer",
+            wake_word: str = "echo listen",
             time_to_wait_in_silence_seconds: float = 2.0,
             max_listen_time_seconds: float = 15.0,
     ):
@@ -76,12 +80,12 @@ class STTOnboard(Node):
 
             while True:
                 raw = audio_q.get().tobytes()
-                decoder.process_raw(raw, False, False)
+                decoder.process_raw(raw)
 
                 hyp = decoder.hyp()
 
                 if mode == WAKE_WORD_MODE and hyp:
-                    self.get_logger().info("Wake word detected!")
+                    self.get_logger().info(f"Wake word ({hyp.hypstr}) detected!")
                     mode = LANGUAGE_SEARCH_MODE
                     decoder.end_utt()
                     decoder.set_search(LANGUAGE_SEARCH_MODE)
@@ -109,14 +113,17 @@ class STTOnboard(Node):
                     ):
                         # Consider utterance complete after a period of no change
                         decoder.end_utt()
-                        self.sounds_pub.publish(String(data=BELL_SOUND))
-                        with wave.open('phrase.wav', "wb") as wf:
+                        self.sounds_pub.publish(String(data=BELL_END_SOUND))
+                        wav_file = BytesIO()
+                        with wave.open(wav_file, "wb") as wf:
                             wf.setnchannels(channels)
                             wf.setsampwidth(2)
                             wf.setframerate(rate)
                             wf.writeframes(b"".join(frames))
-                        self.get_logger().info(f"Phrase is complete. Switching back to wake word detection.")
+                        wav_file.seek(0)
+                        self.ai_pub.publish(String(data=b64encode(wav_file.read()).decode()))
 
+                        self.get_logger().info(f"Phrase is complete. Switching back to wake word detection.")
                         # Reset for wake word detection
                         decoder.set_search(WAKE_WORD_MODE)
                         decoder.start_utt()

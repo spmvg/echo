@@ -30,9 +30,9 @@ RUN apt-get update && \
 RUN apt-get install -y python3-pip python3-colcon-common-extensions
 RUN apt-get install -y python3-pyaudio python3-requests python3-numpy
 # Python dependencies without distribution via apt
-RUN python3 -m pip install pocketsphinx pyttsx3 sounddevice --break-system-packages
+RUN python3 -m pip install pocketsphinx pyttsx3 sounddevice openai --break-system-packages --ignore-installed
 
 ENTRYPOINT ["/bin/bash", "-c"]
 WORKDIR /root/ros2_workspace
 
-CMD ["source /opt/ros/kilted/setup.bash && colcon build && source install/local_setup.bash && ros2 launch echo all_nodes.launch.py"]
+CMD ["source /opt/ros/kilted/setup.bash && colcon build --symlink-install && source install/local_setup.bash && ros2 launch echo all_nodes.launch.py"]

@@ -1,3 +1,4 @@
+from os import getenv
 from time import sleep
 
 import rclpy
@@ -24,6 +25,14 @@ class Initialization(Node):
         except:
             self.get_logger().warning("No internet connection")
             self.pub.publish(String(data="No internet connection"))
+
+        openai_api_key = getenv("OPENAI_API_KEY")
+        if openai_api_key:
+            self.get_logger().info("AI API key configured")
+            self.pub.publish(String(data="AI API key configured"))
+        else:
+            self.get_logger().warning("Missing AI API key")
+            self.pub.publish(String(data="Missing AI API key"))
 
 
 def main(args=None):
