@@ -25,7 +25,10 @@ class SoundPlayer(Node):
         self._queue: LifoQueue = LifoQueue(maxsize=32)
         self._stop_event = threading.Event()
 
-        self._worker = threading.Thread(target=self._worker_loop, daemon=True)
+        self._worker = threading.Thread(
+            target=self._worker_loop,
+            daemon=True,
+        )
         self._worker.start()
 
     def _on_sound_request(self, msg: String):
@@ -68,8 +71,11 @@ class SoundPlayer(Node):
             # Normalize to float32 range [-1.0, 1.0]
             audio = audio.astype(np.float32) / np.iinfo(dtype).max
 
-            sd.play(audio, framerate)
-            sd.wait()
+            try:
+                sd.play(audio, framerate)
+                sd.wait()
+            except Exception as e:
+                self.get_logger().error(f"Error playing sound {wav_path}: {e}")
 
     def _worker_loop(self):
         # Plays queued wav files

@@ -23,7 +23,8 @@ class TTSOnboard(Node):
         self._engine = None
 
         self._engine = pyttsx3.init()
-        self._engine.setProperty('rate', 110)
+        self._rate = 110
+        self._engine.setProperty('rate', self._rate)
 
         # Start background thread which will consume the queue and call the engine
         self._worker = threading.Thread(target=self._worker_loop, daemon=True)
@@ -47,6 +48,7 @@ class TTSOnboard(Node):
             except Empty:
                 continue
 
+            self._engine.setProperty('rate', self._rate)  # for some reason, this value resets sometimes?
             self._engine.say(text)
             self._engine.runAndWait()
 
