@@ -1,5 +1,7 @@
 import os
 import threading
+from base64 import b64encode
+from io import BytesIO
 from queue import LifoQueue
 import wave
 from time import time
@@ -37,6 +39,7 @@ class STTOnboard(Node):
         super().__init__("stt_onboard")
         self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
         self.sounds_pub = self.create_publisher(String, "/sounds/play", 10)
+        self.ai_pub = self.create_publisher(String, "/speech_ai/audio", 10)
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
@@ -111,13 +114,16 @@ class STTOnboard(Node):
                         # Consider utterance complete after a period of no change
                         decoder.end_utt()
                         self.sounds_pub.publish(String(data=BELL_END_SOUND))
-                        with wave.open('phrase.wav', "wb") as wf:
+                        wav_file = BytesIO()
+                        with wave.open(wav_file, "wb") as wf:
                             wf.setnchannels(channels)
                             wf.setsampwidth(2)
                             wf.setframerate(rate)
                             wf.writeframes(b"".join(frames))
-                        self.get_logger().info(f"Phrase is complete. Switching back to wake word detection.")
+                        wav_file.seek(0)
+                        self.ai_pub.publish(String(data=b64encode(wav_file.read()).decode()))
 
+                        self.get_logger().info(f"Phrase is complete. Switching back to wake word detection.")
                         # Reset for wake word detection
                         decoder.set_search(WAKE_WORD_MODE)
                         decoder.start_utt()
