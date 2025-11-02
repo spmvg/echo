@@ -23,7 +23,7 @@ class TTSOnboard(Node):
         self._engine = None
 
         self._engine = pyttsx3.init()
-        self._rate = 110
+        self._rate = 130
         self._engine.setProperty('rate', self._rate)
 
         # Start background thread which will consume the queue and call the engine
