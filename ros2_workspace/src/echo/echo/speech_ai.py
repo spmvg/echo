@@ -1,5 +1,6 @@
 from base64 import b64decode
 from io import BytesIO
+from os import getenv
 
 import rclpy
 from rclpy.node import Node
@@ -57,14 +58,15 @@ class SpeechAI(Node):
             self.get_logger().info(f"Transcription: {transcript.text}")
             self.pub.publish(String(data=f'You said: {transcript.text}. Let me think...'))
 
-            personality = "Helpful, creative, clever, and friendly"
+            prompt = getenv("PROMPT") or f"You are a helpful assistant. Your personality is: helpful, creative, clever, and friendly."
             response = client.responses.create(
                 model="gpt-5-mini",
                 input=[
                     {
                         "role": "user",
                         "content": [
-                            {"type": "input_text", "text": f"You are a helpful assistant. Your personality is: {personality}. The input should be extremely short (1 sentence only and keep compound sentences to a minimum). Your response will be read aloud in text-to-speech, so make sure your response sounds like speech. Respond to the user input accordingly."},
+                            # TODO: this should be a system prompt, not a user prompt
+                            {"type": "input_text", "text": f"{prompt}\n\nThe input should be extremely short (1 sentence only and keep compound sentences to a minimum). Your response will be read aloud in text-to-speech, so make sure your response sounds like speech. Respond to the user input accordingly."},
                             {"type": "input_text", "text": transcript.text}
                         ]
                     }
