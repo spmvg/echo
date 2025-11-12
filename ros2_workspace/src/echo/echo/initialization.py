@@ -21,7 +21,6 @@ class Initialization(Node):
         try:
             requests.get("https://www.google.com", timeout=5)
             self.get_logger().info("Internet connected")
-            self.pub.publish(String(data="Internet connected"))
         except:
             self.get_logger().warning("No internet connection")
             self.pub.publish(String(data="No internet connection"))
@@ -29,10 +28,14 @@ class Initialization(Node):
         openai_api_key = getenv("OPENAI_API_KEY")
         if openai_api_key:
             self.get_logger().info("AI API key configured")
-            self.pub.publish(String(data="AI API key configured"))
         else:
             self.get_logger().warning("Missing AI API key")
             self.pub.publish(String(data="Missing AI API key"))
+
+        prompt = getenv("PROMPT")
+        if prompt:
+            self.get_logger().info(f"Prompt configured: {prompt}")
+            self.pub.publish(String(data="Prompt configured"))
 
 
 def main(args=None):
