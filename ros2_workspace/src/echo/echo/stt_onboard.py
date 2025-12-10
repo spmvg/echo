@@ -27,6 +27,7 @@ WAKE_WORD_MODE = "wakeword"
 LANGUAGE_SEARCH_MODE = "lm"
 BELL_SOUND = "bell_freesound_116779_creative_commons_0"
 BELL_END_SOUND = "bell2_freesound_91924_creative_commons_0"
+SAMPLING_RATE = 44100
 
 
 class STTOnboard(Node):
@@ -47,9 +48,8 @@ class STTOnboard(Node):
 
     def _listen_loop(
             self,
-            buffer_size: int = 1024,
+            buffer_size: int = 4096,
             channels: int = 1,
-            rate: int = 16000,
             wake_word: str = "echo listen",
             time_to_wait_in_silence_seconds: float = 2.0,
             max_listen_time_seconds: float = 15.0,
@@ -69,7 +69,7 @@ class STTOnboard(Node):
         decoder = make_decoder(wake_word)
 
         with sounddevice.InputStream(
-                samplerate=rate,
+                samplerate=SAMPLING_RATE,
                 channels=channels,
                 dtype='int16',
                 blocksize=buffer_size,
@@ -118,7 +118,7 @@ class STTOnboard(Node):
                         with wave.open(wav_file, "wb") as wf:
                             wf.setnchannels(channels)
                             wf.setsampwidth(2)
-                            wf.setframerate(rate)
+                            wf.setframerate(SAMPLING_RATE)
                             wf.writeframes(b"".join(frames))
                         wav_file.seek(0)
                         self.ai_pub.publish(String(data=b64encode(wav_file.read()).decode()))
@@ -140,6 +140,7 @@ def make_decoder(wake_word: str) -> Decoder:
     config.set_string('-hmm', os.path.join(model_path, 'en-us'))
     config.set_string('-dict', os.path.join(model_path, 'cmudict-en-us.dict'))
     config.set_string('-lm', os.path.join(model_path, 'en-us.lm.bin'))
+    config.set_float('-samprate', SAMPLING_RATE)  # Set sampling rate
     decoder = Decoder(config)
 
     # --- Add wake word search ---
