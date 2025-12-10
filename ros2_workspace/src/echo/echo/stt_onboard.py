@@ -62,6 +62,8 @@ class STTOnboard(Node):
         frames = []
 
         def audio_callback(indata, frames, time, status):
+            if status:
+                self.get_logger().error(f"Audio callback status: {status}")
             audio_q.put(indata.copy())
 
         self.get_logger().info(f"Listening for wake word '{wake_word}'...")
