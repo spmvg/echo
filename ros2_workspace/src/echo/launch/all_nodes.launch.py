@@ -9,6 +9,13 @@ def generate_launch_description():
         output='screen'
     )
 
+    audio_capture_node = Node(
+        package='echo',
+        executable='audio_capture_node',
+        name='audio_capture',
+        output='screen'
+    )
+
     tts_onboard_node = Node(
         package='echo',
         executable='tts_onboard',
@@ -38,6 +45,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        audio_capture_node,
         stt_onboard_node,
         tts_onboard_node,
         initialization_node,

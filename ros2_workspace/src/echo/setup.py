@@ -34,6 +34,7 @@ setup(
             'initialization = echo.initialization:main',
             'sound_player = echo.sound_player:main',
             'speech_ai = echo.speech_ai:main',
+            'audio_capture_node = echo.audio_capture_node:main',
         ],
     },
 )
