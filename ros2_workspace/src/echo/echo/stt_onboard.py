@@ -68,6 +68,8 @@ class STTOnboard(Node):
 
         decoder = make_decoder(wake_word)
 
+        self.get_logger().info('Listing available sound devices:\n'+str(sounddevice.query_devices()))
+
         with sounddevice.InputStream(
                 samplerate=rate,
                 channels=channels,
