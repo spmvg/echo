@@ -9,6 +9,7 @@ import wave
 import sounddevice as sd
 import numpy as np
 import os
+import time
 
 
 class SoundPlayer(Node):
@@ -71,11 +72,16 @@ class SoundPlayer(Node):
             # Normalize to float32 range [-1.0, 1.0]
             audio = audio.astype(np.float32) / np.iinfo(dtype).max
 
-            try:
-                sd.play(audio, framerate)
-                sd.wait()
-            except Exception as e:
-                self.get_logger().error(f"Error playing sound {wav_path}: {e}")
+            # Retry loop: try to play until successful, sleeping 500 ms between attempts
+            while True:
+                try:
+                    sd.play(audio, framerate)
+                    sd.wait()
+                    break
+                except Exception as e:
+                    # Log the error and retry after a short sleep
+                    self.get_logger().warning(f"Cannot play sound {wav_path}: {e} - retrying in 500 ms")
+                    time.sleep(0.5)
 
     def _worker_loop(self):
         # Plays queued wav files
