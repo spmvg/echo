@@ -41,7 +41,7 @@ Notes:
 * Install Ubuntu Server on your Raspberry Pi.
 * Follow the commands in the [Dockerfile](docker/Dockerfile).
 * Configure audio input/output on your Raspberry Pi (e.g. USB microphone, 3.5mm audio jack).
-    * It is recommended to write your own `~/.asoundrc` file to set the default input/output devices and use ALSA plug for sample rate conversion. For example:
+    * It is recommended to write your own `/etc/asound.conf`/`~/.asoundrc` file to set the default input/output devices and use ALSA plug for sample rate conversion. For example:
 ```
 pcm.usb {
     type hw
