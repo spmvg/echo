@@ -41,28 +41,22 @@ Notes:
 * Install Ubuntu Server on your Raspberry Pi.
 * Follow the commands in the [Dockerfile](docker/Dockerfile).
 * Configure audio input/output on your Raspberry Pi (e.g. USB microphone, 3.5mm audio jack).
-    * It is recommended to write your own `~/.asoundrc` file to set the default input/output devices and use ALSA plug for sample rate conversion. For example:
+    * It is recommended to write your own `/etc/asound.conf`/`~/.asoundrc` file to set the default input/output devices and use ALSA plug for sample rate conversion. For example:
 ```
-pcm.usb {
-    type hw
-    card "UACDemoV10"
-    device 0
+pcm.usbplayback {
+    type plug
+    slave.pcm "dmix:UACDemoV10,0"
 }
 
 pcm.usbmic {
     type plug
-    slave.pcm "hw:Device,0"
+    slave.pcm "dsnoop:Device,0"
 }
 
 pcm.!default {
     type asym
-    playback.pcm "plug:usb"
+    playback.pcm "usbplayback"
     capture.pcm "usbmic"
-}
-
-ctl.!default {
-    type hw
-    card "UACDemoV10"
 }
 ```
 * Go into the `echo/ros2_workspace` directory and launch all nodes:
