@@ -72,8 +72,9 @@ class SoundPlayer(Node):
             # Normalize to float32 range [-1.0, 1.0]
             audio = audio.astype(np.float32) / np.iinfo(dtype).max
 
-            # Retry loop: try to play until successful, sleeping 500 ms between attempts
-            while True:
+            # Retry loop: try to play, sleeping 500 ms between attempts
+            attempt = 0
+            while attempt <= 10:
                 try:
                     sd.play(audio, framerate)
                     sd.wait()
@@ -82,6 +83,8 @@ class SoundPlayer(Node):
                     # Log the error and retry after a short sleep
                     self.get_logger().warning(f"Cannot play sound {wav_path}: {e} - retrying in 500 ms")
                     time.sleep(0.5)
+
+                attempt += 1
 
     def _worker_loop(self):
         # Plays queued wav files
