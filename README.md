@@ -45,13 +45,13 @@ Notes:
 ```
 pcm.usb {
     type hw
-    card 0
+    card "UACDemoV10"
     device 0
 }
 
 pcm.usbmic {
     type plug
-    slave.pcm "hw:1,0"
+    slave.pcm "hw:Device,0"
 }
 
 pcm.!default {
@@ -62,7 +62,7 @@ pcm.!default {
 
 ctl.!default {
     type hw
-    card 0
+    card "UACDemoV10"
 }
 ```
 * Go into the `echo/ros2_workspace` directory and launch all nodes:
