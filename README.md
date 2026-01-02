@@ -37,6 +37,39 @@ Notes:
 - `OPENAI_API_KEY`: Your OpenAI API key for Whisper and Responses API.
 - `PROMPT` (optional): Default system prompt used by `speech_ai` when querying the Responses API.
 
+## Setup on Raspberry Pi
+* Install Ubuntu Server on your Raspberry Pi.
+* Follow the commands in the [Dockerfile](docker/Dockerfile).
+* Configure audio input/output on your Raspberry Pi (e.g. USB microphone, 3.5mm audio jack).
+    * It is recommended to write your own `~/.asoundrc` file to set the default input/output devices and use ALSA plug for sample rate conversion. For example:
+```
+pcm.usb {
+    type hw
+    card 0
+    device 0
+}
+
+pcm.usbmic {
+    type plug
+    slave.pcm "hw:1,0"
+}
+
+pcm.!default {
+    type asym
+    playback.pcm "plug:usb"
+    capture.pcm "usbmic"
+}
+
+ctl.!default {
+    type hw
+    card 0
+}
+```
+* Go into the `echo/ros2_workspace` directory and launch all nodes:
+```bash
+source /opt/ros/kilted/setup.bash && colcon build --symlink-install && source install/local_setup.bash && ros2 launch echo all_nodes.launch.py
+```
+
 ## Architecture & ROS components
 
 The ROS package `echo` lives in `ros2_workspace/src/echo/echo/` and contains the following nodes and modules:
