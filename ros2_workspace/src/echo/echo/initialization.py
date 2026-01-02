@@ -15,7 +15,7 @@ class Initialization(Node):
 
         self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
 
-        sleep(2)  # wait for tts node to be started
+        sleep(10)  # wait for tts node to be started
         self.pub.publish(String(data="Power on"))
 
         try:
