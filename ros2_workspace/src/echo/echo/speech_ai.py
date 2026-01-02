@@ -65,10 +65,14 @@ class SpeechAI(Node):
                     model="gpt-5-mini",
                     input=[
                         {
+                            "role": "system",
+                            "content": [
+                                {"type": "input_text", "text": f"{prompt}\n\nThe input should be extremely short (1 sentence only and keep compound sentences to a minimum). Your response will be read aloud in text-to-speech, so make sure your response sounds like speech. Respond to the user input accordingly."}
+                            ]
+                        },
+                        {
                             "role": "user",
                             "content": [
-                                # TODO: this should be a system prompt, not a user prompt
-                                {"type": "input_text", "text": f"{prompt}\n\nThe input should be extremely short (1 sentence only and keep compound sentences to a minimum). Your response will be read aloud in text-to-speech, so make sure your response sounds like speech. Respond to the user input accordingly."},
                                 {"type": "input_text", "text": transcript.text}
                             ]
                         }
