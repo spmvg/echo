@@ -6,6 +6,11 @@ import threading
 from queue import LifoQueue, Full, Empty
 
 import pyttsx3
+import time
+import tempfile
+import wave
+import numpy as np
+import sounddevice as sd
 
 
 
@@ -40,6 +45,47 @@ class TTSOnboard(Node):
             # Queue is bounded to avoid unbounded memory growth
             self.get_logger().warning("TTS queue full - dropping incoming message")
 
+    def _speak_to_sounddevice(self, text: str):
+        """
+        Hack around pyttsx3 not raising if device is unavailable by writing to temp WAV and playing via sounddevice.
+        """
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tf:
+            self._engine.save_to_file(text, tf.name)
+            self._engine.runAndWait()
+
+            with wave.open(tf.name, "rb") as wf:
+                n_channels = wf.getnchannels()
+                sampwidth = wf.getsampwidth()
+                framerate = wf.getframerate()
+                n_frames = wf.getnframes()
+
+                # Read audio frames and convert to NumPy array
+                data = wf.readframes(n_frames)
+                dtype_map = {1: np.int8, 2: np.int16, 4: np.int32}
+                dtype = dtype_map.get(sampwidth, np.int16)
+                audio = np.frombuffer(data, dtype=dtype)
+
+                # Reshape for stereo or mono
+                if n_channels > 1:
+                    audio = np.reshape(audio, (-1, n_channels))
+
+                # Normalize to float32 range [-1.0, 1.0]
+                audio = audio.astype(np.float32) / np.iinfo(dtype).max
+
+                # Retry loop: try to play, sleeping 500 ms between attempts
+                attempt = 0
+                while attempt <= 10:
+                    try:
+                        sd.play(audio, framerate)
+                        sd.wait()
+                        break
+                    except Exception as e:
+                        # Log the error and retry after a short sleep
+                        self.get_logger().warning(f"Cannot play text-to-speech: {e} - retrying in 500 ms")
+                        time.sleep(0.5)
+
+                    attempt += 1
+
     def _worker_loop(self):
         # Runs in background thread and processes queued text items
         while not self._stop_event.is_set():
@@ -49,8 +95,7 @@ class TTSOnboard(Node):
                 continue
 
             self._engine.setProperty('rate', self._rate)  # for some reason, this value resets sometimes?
-            self._engine.say(text)
-            self._engine.runAndWait()
+            self._speak_to_sounddevice(text)
 
 
     def destroy_node(self):

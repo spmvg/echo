@@ -59,23 +59,31 @@ class SpeechAI(Node):
             self.pub.publish(String(data=f'You said: {transcript.text}. Let me think...'))
 
             prompt = getenv("PROMPT") or f"You are a helpful assistant. Your personality is: helpful, creative, clever, and friendly."
-            response = client.responses.create(
-                model="gpt-5-mini",
-                input=[
-                    {
-                        "role": "user",
-                        "content": [
-                            # TODO: this should be a system prompt, not a user prompt
-                            {"type": "input_text", "text": f"{prompt}\n\nThe input should be extremely short (1 sentence only and keep compound sentences to a minimum). Your response will be read aloud in text-to-speech, so make sure your response sounds like speech. Respond to the user input accordingly."},
-                            {"type": "input_text", "text": transcript.text}
-                        ]
-                    }
-                ]
-            )
-            response_text = response.output_text
-            self.get_logger().info(f"OpenAI response: {response_text}")
 
-            self.pub.publish(String(data=response_text))
+            try:
+                response = client.responses.create(
+                    model="gpt-5-mini",
+                    input=[
+                        {
+                            "role": "system",
+                            "content": [
+                                {"type": "input_text", "text": f"{prompt}\n\nThe input should be extremely short (1 sentence only and keep compound sentences to a minimum). Your response will be read aloud in text-to-speech, so make sure your response sounds like speech.\n\nRespond to the user input accordingly. Most importantly: be brief (1 sentence only) and concise."}
+                            ]
+                        },
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "input_text", "text": transcript.text}
+                            ]
+                        }
+                    ]
+                )
+                response_text = response.output_text
+                self.get_logger().info(f"OpenAI response: {response_text}")
+
+                self.pub.publish(String(data=response_text))
+            except Exception as e:
+                self.get_logger().error(f"Error reaching OpenAI: {e}. Dropping message and proceeding.")
 
     def destroy_node(self):
         # Gracefully stop the worker and engine before destroying the node

@@ -14,7 +14,7 @@ Key features:
 Build the development container (project root):
 
 ```bash
-docker build -t echo -f docker/.Dockerfile .
+docker build -t echo -f docker/Dockerfile .
 ```
 
 Run the container and give it access to the host sound devices (Linux):

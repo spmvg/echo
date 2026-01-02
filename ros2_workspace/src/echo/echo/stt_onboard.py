@@ -47,7 +47,7 @@ class STTOnboard(Node):
 
     def _listen_loop(
             self,
-            buffer_size: int = 1024,
+            buffer_size: int = 4096,
             channels: int = 1,
             rate: int = 16000,
             wake_word: str = "echo listen",
@@ -63,7 +63,7 @@ class STTOnboard(Node):
 
         def audio_callback(indata, frames, time, status):
             if status:
-                self.get_logger().error(f"Audio callback status: {status}")
+                self.get_logger().warning(f"Audio callback status: {status}")
 
             audio_q.put(indata.copy())
 
