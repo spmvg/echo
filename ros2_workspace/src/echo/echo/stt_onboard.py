@@ -47,7 +47,7 @@ class STTOnboard(Node):
 
     def _listen_loop(
             self,
-            buffer_size: int = 1024,
+            buffer_size: int = 4096,
             channels: int = 1,
             rate: int = 16000,
             wake_word: str = "echo listen",
