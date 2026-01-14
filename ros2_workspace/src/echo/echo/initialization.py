@@ -35,7 +35,9 @@ class Initialization(Node):
         prompt = getenv("PROMPT")
         if prompt:
             self.get_logger().info(f"Prompt configured: {prompt}")
-            self.pub.publish(String(data="Prompt configured"))
+            self.pub.publish(String(data="Custom prompt configured"))
+        else:
+            self.pub.publish(String(data="Using default prompt"))
 
 
 def main(args=None):
