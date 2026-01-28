@@ -30,10 +30,10 @@ BELL_SOUND = "bell_freesound_116779_creative_commons_0"
 BELL_END_SOUND = "bell2_freesound_91924_creative_commons_0"
 MODEL = "gpt-4o-realtime-preview"
 WS_URL = f"wss://api.openai.com/v1/realtime?model={MODEL}"
-SAMPLE_RATE = 24000  # OpenAI realtime API uses 24kHz
+SAMPLE_RATE = 16000  # 16kHz to ease load on RPi
 CHANNELS = 1
 DTYPE = "int16"
-CHUNK_SIZE = 1024
+CHUNK_SIZE = 4096  # Larger chunks to reduce callback frequency on RPi
 SILENCE_TIMEOUT = 10.0  # Seconds of silence before returning to wake word mode
 
 
