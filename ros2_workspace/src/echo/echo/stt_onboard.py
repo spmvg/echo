@@ -29,6 +29,7 @@ CONVERSATION_MODE = "conversation"
 MODEL = "gpt-4o-realtime-preview"
 WS_URL = f"wss://api.openai.com/v1/realtime?model={MODEL}"
 SAMPLE_RATE = 16000  # 16kHz to ease load on RPi
+OPENAI_SAMPLE_RATE = 24000  # OpenAI realtime API uses 24kHz
 CHANNELS = 1
 DTYPE = "int16"
 CHUNK_SIZE = 4096  # Larger chunks to reduce callback frequency on RPi
@@ -40,6 +41,15 @@ def pcm16_to_base64(audio: np.ndarray) -> str:
 
 def base64_to_pcm16(data: str) -> np.ndarray:
     return np.frombuffer(base64.b64decode(data), dtype=DTYPE)
+
+def resample_audio(audio: np.ndarray, from_rate: int, to_rate: int) -> np.ndarray:
+    """Resample audio from one sample rate to another using linear interpolation."""
+    if from_rate == to_rate:
+        return audio
+    duration = len(audio) / from_rate
+    new_length = int(duration * to_rate)
+    indices = np.linspace(0, len(audio) - 1, new_length)
+    return np.interp(indices, np.arange(len(audio)), audio.astype(np.float32)).astype(DTYPE)
 
 
 class STTOnboard(Node):
@@ -59,7 +69,8 @@ class STTOnboard(Node):
         self.ws = None
         self.ws_connected = False
         self.mode = WAKE_WORD_MODE
-        self.audio_out_queue = queue.Queue()
+        self.audio_out_buffer = np.array([], dtype=DTYPE)  # Continuous audio buffer
+        self.audio_out_lock = threading.Lock()
         self.audio_in_queue = queue.Queue()
         self.lock = threading.Lock()
         self.loop = None
@@ -133,7 +144,11 @@ class STTOnboard(Node):
 
         if event_type == "response.audio.delta":
             audio = base64_to_pcm16(event["delta"])
-            self.audio_out_queue.put(audio)
+            # Resample from OpenAI's 24kHz to our 16kHz
+            audio = resample_audio(audio, OPENAI_SAMPLE_RATE, SAMPLE_RATE)
+            # Append to buffer - use lock since speaker_callback runs in another thread
+            with self.audio_out_lock:
+                self.audio_out_buffer = np.append(self.audio_out_buffer, audio)
 
         elif event_type == "response.audio.done":
             self.get_logger().debug("Audio response complete")
@@ -157,7 +172,9 @@ class STTOnboard(Node):
     def send_audio_to_ws(self, audio_data: np.ndarray):
         """Send audio data to WebSocket if connected."""
         if self.loop and self.ws_connected:
-            audio_b64 = pcm16_to_base64(audio_data)
+            # Resample from our 16kHz to OpenAI's 24kHz
+            audio_resampled = resample_audio(audio_data.flatten(), SAMPLE_RATE, OPENAI_SAMPLE_RATE)
+            audio_b64 = pcm16_to_base64(audio_resampled)
             asyncio.run_coroutine_threadsafe(
                 self.ws_send({"type": "input_audio_buffer.append", "audio": audio_b64}),
                 self.loop
@@ -174,16 +191,20 @@ class STTOnboard(Node):
         if status:
             self.get_logger().warning(f"Speaker status: {status}")
 
-        try:
-            audio = self.audio_out_queue.get_nowait()
-            # Handle size mismatch
-            if len(audio) >= frames:
-                outdata[:] = audio[:frames].reshape(-1, 1)
+        with self.audio_out_lock:
+            if len(self.audio_out_buffer) >= frames:
+                # Take exactly 'frames' samples from the buffer
+                outdata[:] = self.audio_out_buffer[:frames].reshape(-1, 1)
+                self.audio_out_buffer = self.audio_out_buffer[frames:]
+            elif len(self.audio_out_buffer) > 0:
+                # Partial buffer - play what we have, pad with silence
+                available = len(self.audio_out_buffer)
+                outdata[:available] = self.audio_out_buffer.reshape(-1, 1)
+                outdata[available:] = 0
+                self.audio_out_buffer = np.array([], dtype=DTYPE)
             else:
-                outdata[:len(audio)] = audio.reshape(-1, 1)
-                outdata[len(audio):] = 0
-        except queue.Empty:
-            outdata.fill(0)
+                # No audio available - output silence
+                outdata.fill(0)
 
     def start_conversation(self):
         """Start a WebSocket connection for conversation."""
@@ -212,12 +233,9 @@ class STTOnboard(Node):
         self.ws_connected = False
         self.mode = WAKE_WORD_MODE
 
-        # Clear audio queues
-        while not self.audio_out_queue.empty():
-            try:
-                self.audio_out_queue.get_nowait()
-            except queue.Empty:
-                break
+        # Clear audio buffer
+        with self.audio_out_lock:
+            self.audio_out_buffer = np.array([], dtype=DTYPE)
 
         self.get_logger().info("Ended conversation, returning to wake word mode")
 
