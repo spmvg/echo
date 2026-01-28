@@ -1,13 +1,9 @@
+import asyncio
 import base64
 import json
 import os
 import queue
 import threading
-from base64 import b64encode
-from io import BytesIO
-from queue import LifoQueue
-import wave
-from time import time
 
 import rclpy
 from rclpy.node import Node
@@ -19,7 +15,7 @@ import websockets
 
 try:
     import pocketsphinx
-    from pocketsphinx import Pocketsphinx, Decoder
+    from pocketsphinx import Decoder
 except Exception as e:
     raise RuntimeError(
         "Failed to import pocketsphinx. Make sure 'pocketsphinx' is installed.\n"
@@ -29,15 +25,16 @@ except Exception as e:
 
 
 WAKE_WORD_MODE = "wakeword"
-LANGUAGE_SEARCH_MODE = "lm"
+CONVERSATION_MODE = "conversation"
 BELL_SOUND = "bell_freesound_116779_creative_commons_0"
 BELL_END_SOUND = "bell2_freesound_91924_creative_commons_0"
 MODEL = "gpt-4o-realtime-preview"
 WS_URL = f"wss://api.openai.com/v1/realtime?model={MODEL}"
-SAMPLE_RATE = 16000
+SAMPLE_RATE = 24000  # OpenAI realtime API uses 24kHz
 CHANNELS = 1
 DTYPE = "int16"
-CHUNK_SIZE = 4096
+CHUNK_SIZE = 1024
+SILENCE_TIMEOUT = 10.0  # Seconds of silence before returning to wake word mode
 
 
 def pcm16_to_base64(audio: np.ndarray) -> str:
@@ -49,8 +46,8 @@ def base64_to_pcm16(data: str) -> np.ndarray:
 
 class STTOnboard(Node):
     """
-    A simple ROS2 node that listens to the microphone via PocketSphinx LiveSpeech
-    and publishes recognized phrases on /tts_onboard/say (std_msgs/String).
+    A ROS2 node that listens for a wake word via PocketSphinx, then streams
+    audio to OpenAI's realtime voice API via WebSocket for conversation.
     """
 
     def __init__(self):
@@ -61,93 +58,183 @@ class STTOnboard(Node):
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         if not self.openai_api_key:
             raise RuntimeError('No OPENAI_API_KEY, cannot proceed.')
+
         self.ws = None
+        self.ws_connected = False
         self.mode = WAKE_WORD_MODE
-        self.audio_out_queue = queue.LifoQueue()
+        self.audio_out_queue = queue.Queue()
+        self.audio_in_queue = queue.Queue()
+        self.lock = threading.Lock()
+        self.loop = None
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
         self.get_logger().info("STTOnboard listener started")
 
-    def on_open(self, ws):
-        self.get_logger().info("WebSocket connected.")
+    async def ws_send(self, data: dict):
+        """Send data to WebSocket if connected."""
+        with self.lock:
+            if self.ws and self.ws_connected:
+                try:
+                    await self.ws.send(json.dumps(data))
+                except Exception as e:
+                    self.get_logger().error(f"Error sending to WebSocket: {e}")
 
-        session_update = {
-            "type": "session.update",
-            "session": {
-                "modalities": ["audio", "text"],
-                "audio": {
-                    "input_format": "pcm16",
-                    "output_format": "pcm16",
-                    "sample_rate": SAMPLE_RATE,
-                    "channels": CHANNELS
-                },
-                "instructions": "You are a concise voice assistant."
-            }
+    async def ws_handler(self):
+        """Handle WebSocket connection and messages."""
+        headers = {
+            "Authorization": f"Bearer {self.openai_api_key}",
+            "OpenAI-Beta": "realtime=v1"
         }
 
-        ws.send(json.dumps(session_update))
+        try:
+            async with websockets.connect(WS_URL, extra_headers=headers) as ws:
+                self.get_logger().info("WebSocket connected.")
+                with self.lock:
+                    self.ws = ws
+                    self.ws_connected = True
 
-    @staticmethod
-    def on_message(ws, message):
+                # Send session configuration
+                session_update = {
+                    "type": "session.update",
+                    "session": {
+                        "modalities": ["audio", "text"],
+                        "input_audio_format": "pcm16",
+                        "output_audio_format": "pcm16",
+                        "input_audio_transcription": {
+                            "model": "whisper-1"
+                        },
+                        "turn_detection": {
+                            "type": "server_vad",
+                            "threshold": 0.5,
+                            "prefix_padding_ms": 300,
+                            "silence_duration_ms": 500
+                        },
+                        "instructions": "You are a concise voice assistant named Echo. Keep responses brief and helpful."
+                    }
+                }
+                await ws.send(json.dumps(session_update))
+
+                # Listen for messages
+                async for message in ws:
+                    await self.handle_message(message)
+
+        except websockets.exceptions.ConnectionClosed as e:
+            self.get_logger().info(f"WebSocket closed: {e}")
+        except Exception as e:
+            self.get_logger().error(f"WebSocket error: {e}")
+        finally:
+            with self.lock:
+                self.ws = None
+                self.ws_connected = False
+            self.get_logger().info("WebSocket disconnected.")
+
+    async def handle_message(self, message: str):
+        """Handle incoming WebSocket messages."""
         event = json.loads(message)
+        event_type = event.get("type", "")
 
-        if event["type"] == "response.audio.delta":
+        if event_type == "response.audio.delta":
             audio = base64_to_pcm16(event["delta"])
-            audio_out_queue.put(audio)
+            self.audio_out_queue.put(audio)
 
-        elif event["type"] == "response.audio.done":
-            pass
+        elif event_type == "response.audio.done":
+            self.get_logger().debug("Audio response complete")
 
-    def on_error(self, ws, error):
-        self.get_logger().error("WebSocket error:", error)
+        elif event_type == "response.done":
+            self.get_logger().info("Response complete")
 
-    def on_close(self, ws, *_):
-        self.get_logger().info("WebSocket closed.")
+        elif event_type == "conversation.item.input_audio_transcription.completed":
+            transcript = event.get("transcript", "")
+            self.get_logger().info(f"User said: {transcript}")
 
-    def microphone_callback(self, indata, frames, time, status):
+        elif event_type == "error":
+            self.get_logger().error(f"API error: {event.get('error', {})}")
+
+        elif event_type == "session.created":
+            self.get_logger().info("Session created")
+
+        elif event_type == "session.updated":
+            self.get_logger().info("Session updated")
+
+    def send_audio_to_ws(self, audio_data: np.ndarray):
+        """Send audio data to WebSocket if connected."""
+        if self.loop and self.ws_connected:
+            audio_b64 = pcm16_to_base64(audio_data)
+            asyncio.run_coroutine_threadsafe(
+                self.ws_send({"type": "input_audio_buffer.append", "audio": audio_b64}),
+                self.loop
+            )
+
+    def microphone_callback(self, indata, frames, time_info, status):
         if status:
-            self.get_logger().warning(status)
+            self.get_logger().warning(f"Mic status: {status}")
 
-        if not self.ws:
-            return
+        # Always put audio in queue for wake word detection
+        self.audio_in_queue.put(indata.copy())
 
-        audio_b64 = pcm16_to_base64(indata.copy())
-
-        self.ws.send(json.dumps({
-            "type": "input_audio_buffer.append",
-            "audio": audio_b64
-        }))
-
-    def speaker_callback(self, outdata, frames, time, status):
+    def speaker_callback(self, outdata, frames, time_info, status):
         if status:
-            self.get_logger().warning(status)
+            self.get_logger().warning(f"Speaker status: {status}")
 
         try:
             audio = self.audio_out_queue.get_nowait()
-            outdata[:] = audio.reshape(-1, 1)
-        except queue.Empty:  # TODO: maybe check size to prevent jitter?
+            # Handle size mismatch
+            if len(audio) >= frames:
+                outdata[:] = audio[:frames].reshape(-1, 1)
+            else:
+                outdata[:len(audio)] = audio.reshape(-1, 1)
+                outdata[len(audio):] = 0
+        except queue.Empty:
             outdata.fill(0)
 
-    def _listen_loop(
-            self,
-            wake_word: str = "echo listen",
-    ):
-        """
-        Uses PocketSphinx's built-in keyword spotting to listen for a wake word.
-        Once detected, open a socket towards OpenAI.
-        """
-        audio_q = LifoQueue()
-        headers = [
-            f"Authorization: Bearer {self.openai_api_key}",
-            "OpenAI-Beta: realtime=v1"
-        ]
+    def start_conversation(self):
+        """Start a WebSocket connection for conversation."""
+        def run_async_loop():
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+            self.loop.run_until_complete(self.ws_handler())
+            self.loop.close()
+            self.loop = None
 
+        ws_thread = threading.Thread(target=run_async_loop, daemon=True)
+        ws_thread.start()
+
+        self.sounds_pub.publish(String(data=BELL_SOUND))
+        self.mode = CONVERSATION_MODE
+        self.get_logger().info("Started conversation mode")
+
+    def end_conversation(self):
+        """End the current conversation and return to wake word mode."""
+        with self.lock:
+            if self.ws:
+                # Close the WebSocket from the async loop
+                if self.loop:
+                    asyncio.run_coroutine_threadsafe(self.ws.close(), self.loop)
+                self.ws = None
+
+        self.ws_connected = False
+        self.mode = WAKE_WORD_MODE
+
+        # Clear audio queues
+        while not self.audio_out_queue.empty():
+            try:
+                self.audio_out_queue.get_nowait()
+            except queue.Empty:
+                break
+
+        self.sounds_pub.publish(String(data=BELL_END_SOUND))
+        self.get_logger().info("Ended conversation, returning to wake word mode")
+
+    def _listen_loop(self, wake_word: str = "echo listen"):
+        """
+        Main loop: listen for wake word, then stream audio to OpenAI realtime API.
+        """
         self.get_logger().info(f"Listening for wake word '{wake_word}'...")
 
         decoder = make_decoder(wake_word)
 
-        self.get_logger().info('Listing available sound devices:\n'+str(sounddevice.query_devices()))
+        self.get_logger().info('Available sound devices:\n' + str(sounddevice.query_devices()))
 
         input_stream = sounddevice.InputStream(
             samplerate=SAMPLE_RATE,
@@ -169,54 +256,50 @@ class STTOnboard(Node):
             decoder.start_utt()
 
             while True:
-                raw = audio_q.get().tobytes()
-                decoder.process_raw(raw)
-
-                hyp = decoder.hyp()
-
-                if self.mode == WAKE_WORD_MODE and hyp:
-                    self.get_logger().info(f"Wake word ({hyp.hypstr}) detected!")
-                    self.mode = LANGUAGE_SEARCH_MODE
-                    decoder.end_utt()
-                    decoder.set_search(LANGUAGE_SEARCH_MODE)
-                    decoder.start_utt()
-
-                    self.ws = websocket.WebSocketApp(
-                        WS_URL,
-                        header=headers,
-                        on_open=self.on_open,
-                        on_message=self.on_message,
-                        on_error=self.on_error,
-                        on_close=self.on_close,
-                    )
-                    ws_thread = threading.Thread(target=self.ws.run_forever, daemon=True)
-                    ws_thread.start()
-
-                    self.sounds_pub.publish(String(data=BELL_SOUND))
+                try:
+                    # Get audio from the queue (with timeout to allow mode checks)
+                    audio_data = self.audio_in_queue.get(timeout=0.1)
+                except queue.Empty:
                     continue
-                elif self.mode == WAKE_WORD_MODE:
-                    continue
-                elif self.mode == LANGUAGE_SEARCH_MODE:
-                    continue
-                else:
-                    raise RuntimeError("Unknown mode in STTOnboard listen loop")
+
+                if self.mode == WAKE_WORD_MODE:
+                    # Feed audio to PocketSphinx for wake word detection
+                    raw = audio_data.tobytes()
+                    decoder.process_raw(raw, False, False)
+
+                    hyp = decoder.hyp()
+                    if hyp:
+                        self.get_logger().info(f"Wake word detected: {hyp.hypstr}")
+                        decoder.end_utt()
+                        decoder.start_utt()
+                        self.start_conversation()
+
+                elif self.mode == CONVERSATION_MODE:
+                    # Send audio to OpenAI WebSocket
+                    self.send_audio_to_ws(audio_data)
+
+                    # Check if WebSocket disconnected unexpectedly
+                    if not self.ws_connected and self.ws is None and self.loop is None:
+                        self.get_logger().info("WebSocket disconnected, returning to wake word mode")
+                        self.mode = WAKE_WORD_MODE
+                        decoder.end_utt()
+                        decoder.start_utt()
 
 
 def make_decoder(wake_word: str) -> Decoder:
-    model_path = os.path.join(os.path.dirname(pocketsphinx.__file__), 'model', 'en-us')
+    """Create a PocketSphinx decoder configured for wake word detection."""
+    model_path = os.path.join(os.path.dirname(pocketsphinx.__file__), 'model')
 
     config = Decoder.default_config()
-    config.set_string('-hmm', os.path.join(model_path, 'en-us'))
-    config.set_string('-dict', os.path.join(model_path, 'cmudict-en-us.dict'))
-    config.set_string('-lm', os.path.join(model_path, 'en-us.lm.bin'))
+    config.set_string('-hmm', os.path.join(model_path, 'en-us', 'en-us'))
+    config.set_string('-dict', os.path.join(model_path, 'en-us', 'cmudict-en-us.dict'))
+    config.set_string('-logfn', '/dev/null')  # Suppress verbose pocketsphinx logs
     decoder = Decoder(config)
 
-    # --- Add wake word search ---
+    # Configure wake word keyphrase spotting
     decoder.set_keyphrase(WAKE_WORD_MODE, wake_word)
     decoder.set_search(WAKE_WORD_MODE)
 
-    # --- Add language model search ---
-    decoder.set_lm_file(LANGUAGE_SEARCH_MODE, os.path.join(model_path, 'en-us.lm.bin'))
 
     return decoder
 
