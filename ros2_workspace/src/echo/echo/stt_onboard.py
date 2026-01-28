@@ -130,6 +130,14 @@ class STTOnboard(Node):
                 }
                 await ws.send(json.dumps(session_update))
 
+                # Trigger OpenAI to start the conversation (say hello first)
+                await ws.send(json.dumps({
+                    "type": "response.create",
+                    "response": {
+                        "modalities": ["audio", "text"]
+                    }
+                }))
+
                 # Listen for messages
                 async for message in ws:
                     await self.handle_message(message)
