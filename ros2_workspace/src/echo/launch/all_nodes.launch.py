@@ -23,24 +23,8 @@ def generate_launch_description():
         output='screen'
     )
 
-    sounds_node = Node(
-        package='echo',
-        executable='sound_player',
-        name='sound_player',
-        output='screen'
-    )
-
-    speech_ai = Node(
-        package='echo',
-        executable='speech_ai',
-        name='speech_ai',
-        output='screen'
-    )
-
     return LaunchDescription([
         stt_onboard_node,
         tts_onboard_node,
         initialization_node,
-        sounds_node,
-        speech_ai,
     ])
