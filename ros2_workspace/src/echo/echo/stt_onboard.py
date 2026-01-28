@@ -97,6 +97,8 @@ class STTOnboard(Node):
             "OpenAI-Beta": "realtime=v1"
         }
 
+        prompt = os.getenv("PROMPT") or f"Your personality is: helpful, creative, clever, and friendly."
+
         try:
             async with websockets.connect(WS_URL, extra_headers=headers) as ws:
                 self.get_logger().info("WebSocket connected.")
@@ -120,7 +122,10 @@ class STTOnboard(Node):
                             "prefix_padding_ms": 300,
                             "silence_duration_ms": 500
                         },
-                        "instructions": "You are a concise voice assistant named Echo. Keep responses brief and helpful."
+                        "instructions": (
+                            f"You are a concise voice assistant named Echo. {prompt}\n\n"
+                            f"Your responses should be extremely short (1 sentence only and keep compound sentences to a minimum). Respond to the user input accordingly. You must be the first to say hello. Most importantly: be brief (1 sentence only) and concise."
+                        )
                     }
                 }
                 await ws.send(json.dumps(session_update))
