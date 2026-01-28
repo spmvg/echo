@@ -26,8 +26,6 @@ except Exception as e:
 
 WAKE_WORD_MODE = "wakeword"
 CONVERSATION_MODE = "conversation"
-BELL_SOUND = "bell_freesound_116779_creative_commons_0"
-BELL_END_SOUND = "bell2_freesound_91924_creative_commons_0"
 MODEL = "gpt-4o-realtime-preview"
 WS_URL = f"wss://api.openai.com/v1/realtime?model={MODEL}"
 SAMPLE_RATE = 16000  # 16kHz to ease load on RPi
@@ -53,7 +51,6 @@ class STTOnboard(Node):
     def __init__(self):
         super().__init__("stt_onboard")
         self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
-        self.sounds_pub = self.create_publisher(String, "/sounds/play", 10)
         self.ai_pub = self.create_publisher(String, "/speech_ai/audio", 10)
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         if not self.openai_api_key:
@@ -200,7 +197,6 @@ class STTOnboard(Node):
         ws_thread = threading.Thread(target=run_async_loop, daemon=True)
         ws_thread.start()
 
-        self.sounds_pub.publish(String(data=BELL_SOUND))
         self.mode = CONVERSATION_MODE
         self.get_logger().info("Started conversation mode")
 
@@ -223,7 +219,6 @@ class STTOnboard(Node):
             except queue.Empty:
                 break
 
-        self.sounds_pub.publish(String(data=BELL_END_SOUND))
         self.get_logger().info("Ended conversation, returning to wake word mode")
 
     def _listen_loop(self, wake_word: str = "echo listen"):
