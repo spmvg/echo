@@ -4,6 +4,7 @@ import json
 import os
 import queue
 import threading
+import time
 
 import rclpy
 from rclpy.node import Node
@@ -33,7 +34,7 @@ OPENAI_SAMPLE_RATE = 24000  # OpenAI realtime API uses 24kHz
 CHANNELS = 1
 DTYPE = "int16"
 CHUNK_SIZE = 4096  # Larger chunks to reduce callback frequency on RPi
-SILENCE_TIMEOUT = 10.0  # Seconds of silence before returning to wake word mode
+INACTIVITY_TIMEOUT = 30.0  # Seconds of inactivity before closing conversation
 
 
 def pcm16_to_base64(audio: np.ndarray) -> str:
@@ -74,6 +75,7 @@ class STTOnboard(Node):
         self.audio_in_queue = queue.Queue()
         self.lock = threading.Lock()
         self.loop = None
+        self.last_activity = 0.0  # Timestamp of last activity (audio received from OpenAI)
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
@@ -149,16 +151,20 @@ class STTOnboard(Node):
             # Append to buffer - use lock since speaker_callback runs in another thread
             with self.audio_out_lock:
                 self.audio_out_buffer = np.append(self.audio_out_buffer, audio)
+            self.last_activity = time.time()
 
         elif event_type == "response.audio.done":
             self.get_logger().debug("Audio response complete")
+            self.last_activity = time.time()
 
         elif event_type == "response.done":
             self.get_logger().info("Response complete")
+            self.last_activity = time.time()
 
         elif event_type == "conversation.item.input_audio_transcription.completed":
             transcript = event.get("transcript", "")
             self.get_logger().info(f"User said: {transcript}")
+            self.last_activity = time.time()
 
         elif event_type == "error":
             self.get_logger().error(f"API error: {event.get('error', {})}")
@@ -208,6 +214,8 @@ class STTOnboard(Node):
 
     def start_conversation(self):
         """Start a WebSocket connection for conversation."""
+        self.last_activity = time.time()  # Reset activity timer
+
         def run_async_loop():
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
@@ -290,6 +298,14 @@ class STTOnboard(Node):
                 elif self.mode == CONVERSATION_MODE:
                     # Send audio to OpenAI WebSocket
                     self.send_audio_to_ws(audio_data)
+
+                    # Check for inactivity timeout
+                    if self.last_activity > 0 and (time.time() - self.last_activity) > INACTIVITY_TIMEOUT:
+                        self.get_logger().info(f"Inactivity timeout ({INACTIVITY_TIMEOUT}s), ending conversation")
+                        self.end_conversation()
+                        decoder.end_utt()
+                        decoder.start_utt()
+                        continue
 
                     # Check if WebSocket disconnected unexpectedly
                     if not self.ws_connected and self.ws is None and self.loop is None:
