@@ -14,7 +14,6 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['launch/all_nodes.launch.py']),
-        (os.path.join('share', package_name, 'sounds'), glob(os.path.join(package_name, 'sounds', '*.wav'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -32,8 +31,6 @@ setup(
             'stt_onboard = echo.stt_onboard:main',
             'tts_onboard = echo.tts_onboard:main',
             'initialization = echo.initialization:main',
-            'sound_player = echo.sound_player:main',
-            'speech_ai = echo.speech_ai:main',
         ],
     },
 )
