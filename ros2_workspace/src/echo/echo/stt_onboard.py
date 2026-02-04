@@ -8,7 +8,7 @@ import time
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import String, Int16MultiArray
 
 import sounddevice
 import numpy as np
@@ -63,6 +63,10 @@ class STTOnboard(Node):
         super().__init__("stt_onboard")
         self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
         self.ai_pub = self.create_publisher(String, "/speech_ai/audio", 10)
+        # Subscribe to audio from tts_onboard for playback (avoids audio device conflicts)
+        self.audio_sub = self.create_subscription(
+            Int16MultiArray, "/stt_onboard/audio_out", self._on_tts_audio, 10
+        )
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         if not self.openai_api_key:
             raise RuntimeError('No OPENAI_API_KEY, cannot proceed.')
@@ -80,6 +84,13 @@ class STTOnboard(Node):
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
         self.get_logger().info("STTOnboard listener started")
+
+    def _on_tts_audio(self, msg: Int16MultiArray):
+        """Receive audio from tts_onboard and add to output buffer for playback."""
+        audio = np.array(msg.data, dtype=DTYPE)
+        with self.audio_out_lock:
+            self.audio_out_buffer = np.append(self.audio_out_buffer, audio)
+        self.get_logger().debug(f"Received {len(audio)} audio samples from tts_onboard")
 
     async def ws_send(self, data: dict):
         """Send data to WebSocket if connected."""
@@ -246,9 +257,8 @@ class STTOnboard(Node):
         self.ws_connected = False
         self.mode = WAKE_WORD_MODE
 
-        # Clear audio buffer
-        with self.audio_out_lock:
-            self.audio_out_buffer = np.array([], dtype=DTYPE)
+        # Note: Don't clear audio buffer here - let any remaining audio finish playing
+        # and allow the "Disconnected" TTS message to be queued
 
         # Notify user via TTS
         msg = String()
