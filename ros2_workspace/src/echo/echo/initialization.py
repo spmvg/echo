@@ -1,5 +1,4 @@
 from os import getenv
-from time import sleep
 
 import rclpy
 from rclpy.node import Node
@@ -15,7 +14,8 @@ class Initialization(Node):
 
         self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
 
-        sleep(5)  # wait for tts node to be started
+        # Wait for tts_onboard node to be available
+        self._wait_for_node("tts_onboard", timeout_sec=30.0)
         self.pub.publish(String(data="Power on"))
 
         try:
@@ -38,6 +38,23 @@ class Initialization(Node):
             self.pub.publish(String(data="Custom prompt configured"))
         else:
             self.pub.publish(String(data="Using default prompt"))
+
+    def _wait_for_node(self, node_name: str, timeout_sec: float = 30.0):
+        """Wait for a node to become available using ROS2 graph API."""
+        self.get_logger().info(f"Waiting for node '{node_name}' to be available...")
+        start_time = self.get_clock().now()
+        while rclpy.ok():
+            node_names = [name for name, _ in self.get_node_names_and_namespaces()]
+            if node_name in node_names:
+                self.get_logger().info(f"Node '{node_name}' is now available")
+                return True
+
+            elapsed = (self.get_clock().now() - start_time).nanoseconds / 1e9
+            if elapsed > timeout_sec:
+                self.get_logger().warning(f"Timeout waiting for node '{node_name}'")
+                return False
+
+            rclpy.spin_once(self, timeout_sec=0.5)
 
 
 def main(args=None):
