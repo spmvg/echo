@@ -50,6 +50,8 @@ class TTSOnboard(Node):
 
     def _resample_audio(self, audio: np.ndarray, from_rate: int, to_rate: int) -> np.ndarray:
         """Resample audio from one sample rate to another using linear interpolation."""
+        if len(audio) == 0:
+            return audio
         if from_rate == to_rate:
             return audio
         duration = len(audio) / from_rate
@@ -89,6 +91,11 @@ class TTSOnboard(Node):
 
                 # Resample to target sample rate
                 audio = self._resample_audio(audio, framerate, TARGET_SAMPLE_RATE)
+
+                # Don't publish empty audio
+                if len(audio) == 0:
+                    self.get_logger().warning("Generated empty audio, skipping publish")
+                    return
 
                 # Publish audio to stt_onboard
                 msg = Int16MultiArray()
