@@ -34,7 +34,7 @@ OPENAI_SAMPLE_RATE = 24000  # OpenAI realtime API uses 24kHz
 CHANNELS = 1
 DTYPE = "int16"
 CHUNK_SIZE = 4096  # Larger chunks to reduce callback frequency on RPi
-INACTIVITY_TIMEOUT = 30.0  # Seconds of inactivity before closing conversation
+INACTIVITY_TIMEOUT = 20.0  # Seconds without model response before closing conversation
 
 
 def pcm16_to_base64(audio: np.ndarray) -> str:
@@ -113,9 +113,6 @@ class STTOnboard(Node):
                         "modalities": ["audio", "text"],
                         "input_audio_format": "pcm16",
                         "output_audio_format": "pcm16",
-                        "input_audio_transcription": {
-                            "model": "whisper-1"
-                        },
                         "turn_detection": {
                             "type": "server_vad",
                             "threshold": 0.5,
@@ -172,11 +169,6 @@ class STTOnboard(Node):
 
         elif event_type == "response.done":
             self.get_logger().info("Response complete")
-            self.last_activity = time.time()
-
-        elif event_type == "conversation.item.input_audio_transcription.completed":
-            transcript = event.get("transcript", "")
-            self.get_logger().info(f"User said: {transcript}")
             self.last_activity = time.time()
 
         elif event_type == "error":
@@ -258,6 +250,11 @@ class STTOnboard(Node):
         with self.audio_out_lock:
             self.audio_out_buffer = np.array([], dtype=DTYPE)
 
+        # Notify user via TTS
+        msg = String()
+        msg.data = "Disconnected"
+        self.pub.publish(msg)
+
         self.get_logger().info("Ended conversation, returning to wake word mode")
 
     def _listen_loop(self, wake_word: str = "echo listen"):
@@ -314,7 +311,7 @@ class STTOnboard(Node):
 
                     # Check for inactivity timeout
                     if self.last_activity > 0 and (time.time() - self.last_activity) > INACTIVITY_TIMEOUT:
-                        self.get_logger().info(f"Inactivity timeout ({INACTIVITY_TIMEOUT}s), ending conversation")
+                        self.get_logger().info(f"No model response for {INACTIVITY_TIMEOUT}s, ending conversation")
                         self.end_conversation()
                         decoder.end_utt()
                         decoder.start_utt()
