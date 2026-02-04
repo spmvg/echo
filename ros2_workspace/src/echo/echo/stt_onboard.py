@@ -113,9 +113,6 @@ class STTOnboard(Node):
                         "modalities": ["audio", "text"],
                         "input_audio_format": "pcm16",
                         "output_audio_format": "pcm16",
-                        "input_audio_transcription": {
-                            "model": "whisper-1"
-                        },
                         "turn_detection": {
                             "type": "server_vad",
                             "threshold": 0.5,
@@ -172,11 +169,6 @@ class STTOnboard(Node):
 
         elif event_type == "response.done":
             self.get_logger().info("Response complete")
-            self.last_activity = time.time()
-
-        elif event_type == "conversation.item.input_audio_transcription.completed":
-            transcript = event.get("transcript", "")
-            self.get_logger().info(f"User said: {transcript}")
             self.last_activity = time.time()
 
         elif event_type == "error":
