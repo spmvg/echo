@@ -1,17 +1,18 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import String, Int16MultiArray
 
 import threading
 from queue import LifoQueue, Full, Empty
 
 import pyttsx3
-import time
 import tempfile
 import wave
 import numpy as np
-import sounddevice as sd
 
+
+# Must match stt_onboard's SAMPLE_RATE
+TARGET_SAMPLE_RATE = 16000
 
 
 class TTSOnboard(Node):
@@ -20,6 +21,8 @@ class TTSOnboard(Node):
         self.sub = self.create_subscription(
             String, "/tts_onboard/say", self._on_transcript, 10
         )
+        # Publish audio to stt_onboard for playback (avoids audio device conflicts)
+        self.audio_pub = self.create_publisher(Int16MultiArray, "/stt_onboard/audio_out", 10)
         self.get_logger().info("TTSOnboard subscriber started, listening on /tts_onboard/say")
 
         # Queue and worker used to avoid blocking the ROS callback while speaking
@@ -45,9 +48,18 @@ class TTSOnboard(Node):
             # Queue is bounded to avoid unbounded memory growth
             self.get_logger().warning("TTS queue full - dropping incoming message")
 
-    def _speak_to_sounddevice(self, text: str):
+    def _resample_audio(self, audio: np.ndarray, from_rate: int, to_rate: int) -> np.ndarray:
+        """Resample audio from one sample rate to another using linear interpolation."""
+        if from_rate == to_rate:
+            return audio
+        duration = len(audio) / from_rate
+        new_length = int(duration * to_rate)
+        indices = np.linspace(0, len(audio) - 1, new_length)
+        return np.interp(indices, np.arange(len(audio)), audio.astype(np.float32)).astype(np.int16)
+
+    def _generate_and_publish_audio(self, text: str):
         """
-        Hack around pyttsx3 not raising if device is unavailable by writing to temp WAV and playing via sounddevice.
+        Generate audio using pyttsx3 and publish to stt_onboard for playback.
         """
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tf:
             self._engine.save_to_file(text, tf.name)
@@ -65,26 +77,24 @@ class TTSOnboard(Node):
                 dtype = dtype_map.get(sampwidth, np.int16)
                 audio = np.frombuffer(data, dtype=dtype)
 
-                # Reshape for stereo or mono
+                # Convert to int16 if needed
+                if dtype != np.int16:
+                    # Scale to int16 range
+                    audio = (audio.astype(np.float32) / np.iinfo(dtype).max * np.iinfo(np.int16).max).astype(np.int16)
+
+                # Convert stereo to mono if needed
                 if n_channels > 1:
                     audio = np.reshape(audio, (-1, n_channels))
+                    audio = audio.mean(axis=1).astype(np.int16)
 
-                # Normalize to float32 range [-1.0, 1.0]
-                audio = audio.astype(np.float32) / np.iinfo(dtype).max
+                # Resample to target sample rate
+                audio = self._resample_audio(audio, framerate, TARGET_SAMPLE_RATE)
 
-                # Retry loop: try to play, sleeping 500 ms between attempts
-                attempt = 0
-                while attempt <= 10:
-                    try:
-                        sd.play(audio, framerate)
-                        sd.wait()
-                        break
-                    except Exception as e:
-                        # Log the error and retry after a short sleep
-                        self.get_logger().warning(f"Cannot play text-to-speech: {e} - retrying in 500 ms")
-                        time.sleep(0.5)
-
-                    attempt += 1
+                # Publish audio to stt_onboard
+                msg = Int16MultiArray()
+                msg.data = audio.tolist()
+                self.audio_pub.publish(msg)
+                self.get_logger().debug(f"Published {len(audio)} audio samples to stt_onboard")
 
     def _worker_loop(self):
         # Runs in background thread and processes queued text items
@@ -95,8 +105,7 @@ class TTSOnboard(Node):
                 continue
 
             self._engine.setProperty('rate', self._rate)  # for some reason, this value resets sometimes?
-            self._speak_to_sounddevice(text)
-
+            self._generate_and_publish_audio(text)
 
     def destroy_node(self):
         # Gracefully stop the worker and engine before destroying the node

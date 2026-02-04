@@ -14,8 +14,10 @@ class Initialization(Node):
 
         self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
 
-        # Wait for tts_onboard node to be available
+        # Wait for both tts_onboard and stt_onboard nodes to be available
+        # stt_onboard handles audio playback, tts_onboard generates audio
         self._wait_for_node("tts_onboard", timeout_sec=30.0)
+        self._wait_for_node("stt_onboard", timeout_sec=30.0)
         self.pub.publish(String(data="Power on"))
 
         try:
