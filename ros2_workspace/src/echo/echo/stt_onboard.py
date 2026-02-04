@@ -250,6 +250,11 @@ class STTOnboard(Node):
         with self.audio_out_lock:
             self.audio_out_buffer = np.array([], dtype=DTYPE)
 
+        # Notify user via TTS
+        msg = String()
+        msg.data = "Disconnected"
+        self.pub.publish(msg)
+
         self.get_logger().info("Ended conversation, returning to wake word mode")
 
     def _listen_loop(self, wake_word: str = "echo listen"):
