@@ -34,7 +34,7 @@ OPENAI_SAMPLE_RATE = 24000  # OpenAI realtime API uses 24kHz
 CHANNELS = 1
 DTYPE = "int16"
 CHUNK_SIZE = 4096  # Larger chunks to reduce callback frequency on RPi
-INACTIVITY_TIMEOUT = 15.0  # Seconds without model response before closing conversation
+INACTIVITY_TIMEOUT = 20.0  # Seconds without model response before closing conversation
 
 
 def pcm16_to_base64(audio: np.ndarray) -> str:
