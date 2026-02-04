@@ -34,7 +34,7 @@ OPENAI_SAMPLE_RATE = 24000  # OpenAI realtime API uses 24kHz
 CHANNELS = 1
 DTYPE = "int16"
 CHUNK_SIZE = 4096  # Larger chunks to reduce callback frequency on RPi
-INACTIVITY_TIMEOUT = 30.0  # Seconds of inactivity before closing conversation
+INACTIVITY_TIMEOUT = 15.0  # Seconds without model response before closing conversation
 
 
 def pcm16_to_base64(audio: np.ndarray) -> str:
@@ -306,7 +306,7 @@ class STTOnboard(Node):
 
                     # Check for inactivity timeout
                     if self.last_activity > 0 and (time.time() - self.last_activity) > INACTIVITY_TIMEOUT:
-                        self.get_logger().info(f"Inactivity timeout ({INACTIVITY_TIMEOUT}s), ending conversation")
+                        self.get_logger().info(f"No model response for {INACTIVITY_TIMEOUT}s, ending conversation")
                         self.end_conversation()
                         decoder.end_utt()
                         decoder.start_utt()
