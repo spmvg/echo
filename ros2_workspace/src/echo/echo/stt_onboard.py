@@ -35,6 +35,7 @@ CHANNELS = 1
 DTYPE = "int16"
 CHUNK_SIZE = 4096  # Larger chunks to reduce callback frequency on RPi
 INACTIVITY_TIMEOUT = 20.0  # Seconds without model response before closing conversation
+MIC_MUTE_DEBOUNCE = 0.5  # Seconds to keep mic muted after audio playback stops
 
 
 def pcm16_to_base64(audio: np.ndarray) -> str:
@@ -80,6 +81,7 @@ class STTOnboard(Node):
         self.lock = threading.Lock()
         self.loop = None
         self.last_activity = 0.0  # Timestamp of last activity (audio received from OpenAI)
+        self.last_audio_played = 0.0  # Timestamp of last audio playback (for mic muting)
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
@@ -206,6 +208,10 @@ class STTOnboard(Node):
         if status:
             self.get_logger().warning(f"Mic status: {status}")
 
+        # Mute mic while audio is playing (with debounce) to prevent feedback
+        if time.time() - self.last_audio_played < MIC_MUTE_DEBOUNCE:
+            return
+
         # Always put audio in queue for wake word detection
         self.audio_in_queue.put(indata.copy())
 
@@ -218,12 +224,14 @@ class STTOnboard(Node):
                 # Take exactly 'frames' samples from the buffer
                 outdata[:] = self.audio_out_buffer[:frames].reshape(-1, 1)
                 self.audio_out_buffer = self.audio_out_buffer[frames:]
+                self.last_audio_played = time.time()
             elif len(self.audio_out_buffer) > 0:
                 # Partial buffer - play what we have, pad with silence
                 available = len(self.audio_out_buffer)
                 outdata[:available] = self.audio_out_buffer.reshape(-1, 1)
                 outdata[available:] = 0
                 self.audio_out_buffer = np.array([], dtype=DTYPE)
+                self.last_audio_played = time.time()
             else:
                 # No audio available - output silence
                 outdata.fill(0)
