@@ -134,7 +134,7 @@ class STTOnboard(Node):
                         },
                         "instructions": (
                             f"You are a concise voice assistant named Echo. {prompt}\n\n"
-                            f"Your responses should be extremely short (1 sentence only and keep compound sentences to a minimum). Respond to the user input accordingly. You must be the first to say hello. Most importantly: be brief (1 sentence only) and concise."
+                            f"Your responses should be extremely short (1 sentence only and keep compound sentences to a minimum). Respond to the user input accordingly. You must be the first to say hello. Most importantly: be brief (1 sentence only) and concise. Always respond in English unless the user explicitly requests another language."
                         )
                     }
                 }
