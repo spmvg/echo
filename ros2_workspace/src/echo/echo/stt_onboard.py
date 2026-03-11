@@ -34,7 +34,7 @@ OPENAI_SAMPLE_RATE = 24000  # OpenAI realtime API uses 24kHz
 CHANNELS = 1
 DTYPE = "int16"
 CHUNK_SIZE = 4096  # Larger chunks to reduce callback frequency on RPi
-INACTIVITY_TIMEOUT = 20.0  # Seconds without model response before closing conversation
+INACTIVITY_TIMEOUT = float(os.getenv("INACTIVITY_TIMEOUT", "10"))  # Seconds without model response before closing conversation
 MIC_MUTE_DEBOUNCE = 0.5  # Seconds to keep mic muted after audio playback stops
 
 

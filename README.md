@@ -75,7 +75,7 @@ ros2 launch echo all_nodes.launch.py
 1. Say "echo listen" to activate
 2. Echo greets you and starts a conversation
 3. Speak naturally — the assistant responds in real-time
-4. After 20 seconds of inactivity, Echo returns to listening for the wake word
+4. After 10 seconds of inactivity, Echo returns to listening for the wake word
 
 ## Architecture
 
