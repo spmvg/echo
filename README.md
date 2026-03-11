@@ -33,6 +33,8 @@ Notes:
 ## Environment variables
 
 - `OPENAI_API_KEY`: Your OpenAI API key for the realtime voice API.
+- `MODEL`: OpenAI model to use (default: `gpt-realtime-mini`).
+- `PROMPT`: Custom personality prompt for the assistant.
 
 ## Setup on Raspberry Pi
 
@@ -73,20 +75,15 @@ ros2 launch echo all_nodes.launch.py
 1. Say "echo listen" to activate
 2. Echo greets you and starts a conversation
 3. Speak naturally — the assistant responds in real-time
-4. After 30 seconds of inactivity, Echo returns to listening for the wake word
+4. After 10 seconds of inactivity, Echo returns to listening for the wake word
 
 ## Architecture
 
 The ROS package `echo` contains:
 
-- **`stt_onboard`** — Main node handling wake-word detection and OpenAI realtime voice communication
-  - Uses PocketSphinx for local wake-word detection ("echo listen")
-  - Streams audio to/from OpenAI's realtime WebSocket API
-  - Handles audio input (microphone) and output (speaker) via `sounddevice`
-
-- **`tts_onboard`** — Local text-to-speech using `pyttsx3` for startup announcements
-
-- **`initialization`** — Startup node that checks connectivity and announces status
+- **`stt_onboard`** — Wake-word detection and OpenAI realtime voice communication
+- **`tts_onboard`** — Local text-to-speech for status announcements
+- **`initialization`** — Startup checks and status announcements
 
 ## Contributing
 
