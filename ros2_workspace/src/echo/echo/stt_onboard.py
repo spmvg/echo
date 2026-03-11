@@ -27,7 +27,7 @@ except Exception as e:
 
 WAKE_WORD_MODE = "wakeword"
 CONVERSATION_MODE = "conversation"
-MODEL = "gpt-4o-realtime-preview"
+MODEL = os.getenv("MODEL", "gpt-realtime-mini")
 WS_URL = f"wss://api.openai.com/v1/realtime?model={MODEL}"
 SAMPLE_RATE = 16000  # 16kHz to ease load on RPi
 OPENAI_SAMPLE_RATE = 24000  # OpenAI realtime API uses 24kHz
