@@ -174,15 +174,13 @@ class STTOnboard(Node):
             # Append to buffer - use lock since speaker_callback runs in another thread
             with self.audio_out_lock:
                 self.audio_out_buffer = np.append(self.audio_out_buffer, audio)
-            self.last_activity = time.time()
+            # Note: last_activity is updated in speaker_callback when audio finishes playing
 
         elif event_type == "response.audio.done":
             self.get_logger().debug("Audio response complete")
-            self.last_activity = time.time()
 
         elif event_type == "response.done":
             self.get_logger().info("Response complete")
-            self.last_activity = time.time()
 
         elif event_type == "error":
             self.get_logger().error(f"API error: {event.get('error', {})}")
@@ -225,6 +223,7 @@ class STTOnboard(Node):
                 outdata[:] = self.audio_out_buffer[:frames].reshape(-1, 1)
                 self.audio_out_buffer = self.audio_out_buffer[frames:]
                 self.last_audio_played = time.time()
+                self.last_activity = time.time()  # Reset inactivity timer while playing
             elif len(self.audio_out_buffer) > 0:
                 # Partial buffer - play what we have, pad with silence
                 available = len(self.audio_out_buffer)
@@ -232,6 +231,7 @@ class STTOnboard(Node):
                 outdata[available:] = 0
                 self.audio_out_buffer = np.array([], dtype=DTYPE)
                 self.last_audio_played = time.time()
+                self.last_activity = time.time()  # Reset inactivity timer when audio finishes
             else:
                 # No audio available - output silence
                 outdata.fill(0)
