@@ -8,7 +8,7 @@ import time
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String, Int16MultiArray
+from std_msgs.msg import String, Bool, Int16MultiArray
 
 import sounddevice
 import numpy as np
@@ -68,6 +68,13 @@ class STTOnboard(Node):
         self.audio_sub = self.create_subscription(
             Int16MultiArray, "/stt_onboard/audio_out", self._on_tts_audio, 10
         )
+
+        # Remote listening control (driven by mqtt_bridge)
+        self.listening_enabled = True
+        self.listening_state_pub = self.create_publisher(Bool, "/stt_onboard/listening_state", 10)
+        self.set_listening_sub = self.create_subscription(
+            Bool, "/stt_onboard/set_listening", self._on_set_listening, 10
+        )
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         if not self.openai_api_key:
             raise RuntimeError('No OPENAI_API_KEY, cannot proceed.')
@@ -86,6 +93,21 @@ class STTOnboard(Node):
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
         self.get_logger().info("STTOnboard listener started")
+
+    def _on_set_listening(self, msg: Bool):
+        """Enable or disable wake word listening via remote command."""
+        prev = self.listening_enabled
+        self.listening_enabled = msg.data
+
+        if prev != msg.data:
+            state = "enabled" if msg.data else "disabled"
+            self.get_logger().info(f"Wake word listening {state}")
+
+            if not msg.data and self.mode == CONVERSATION_MODE:
+                self.end_conversation()
+
+        # Publish current state for feedback (mqtt_bridge forwards to MQTT)
+        self.listening_state_pub.publish(Bool(data=self.listening_enabled))
 
     def _on_tts_audio(self, msg: Int16MultiArray):
         """Receive audio from tts_onboard and add to output buffer for playback."""
@@ -312,6 +334,9 @@ class STTOnboard(Node):
                     continue
 
                 if self.mode == WAKE_WORD_MODE:
+                    if not self.listening_enabled:
+                        continue
+
                     # Feed audio to PocketSphinx for wake word detection
                     raw = audio_data.tobytes()
                     decoder.process_raw(raw, False, False)

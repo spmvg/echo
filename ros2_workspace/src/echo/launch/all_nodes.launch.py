@@ -16,6 +16,13 @@ def generate_launch_description():
         output='screen'
     )
 
+    mqtt_bridge_node = Node(
+        package='echo',
+        executable='mqtt_bridge',
+        name='mqtt_bridge',
+        output='screen'
+    )
+
     initialization_node = Node(
         package='echo',
         executable='initialization',
@@ -26,5 +33,6 @@ def generate_launch_description():
     return LaunchDescription([
         stt_onboard_node,
         tts_onboard_node,
+        mqtt_bridge_node,
         initialization_node,
     ])

@@ -64,7 +64,7 @@ sudo apt-get install -y \
 
 # --- Python packages (pip) ---
 echo ">> Installing Python pip packages (pocketsphinx, pyttsx3, sounddevice, openai)..."
-python3 -m pip install pocketsphinx pyttsx3 sounddevice openai --break-system-packages --ignore-installed
+python3 -m pip install pocketsphinx pyttsx3 sounddevice openai paho-mqtt --break-system-packages --ignore-installed
 
 # ============================================================
 # Beyond this point: RPi-specific setup (not in Dockerfile)
