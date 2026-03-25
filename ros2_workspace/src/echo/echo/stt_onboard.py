@@ -92,7 +92,7 @@ class STTOnboard(Node):
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
-        self.get_logger().info("STTOnboard listener started")
+        self.get_logger().info("STTOnboard listener started (listening_enabled=True)")
 
     def _on_set_listening(self, msg: Bool):
         """Enable or disable wake word listening via remote command."""
@@ -101,10 +101,13 @@ class STTOnboard(Node):
 
         if prev != msg.data:
             state = "enabled" if msg.data else "disabled"
-            self.get_logger().info(f"Wake word listening {state}")
+            self.get_logger().info(f"Wake word listening {state} (was {'enabled' if prev else 'disabled'})")
 
             if not msg.data and self.mode == CONVERSATION_MODE:
+                self.get_logger().info("Listening disabled while in conversation — ending conversation")
                 self.end_conversation()
+        else:
+            self.get_logger().debug(f"set_listening received but already {'enabled' if msg.data else 'disabled'}, no change")
 
         # Publish current state for feedback (mqtt_bridge forwards to MQTT)
         self.listening_state_pub.publish(Bool(data=self.listening_enabled))

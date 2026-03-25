@@ -80,8 +80,10 @@ class MQTTBridge(Node):
         set_topic = f"{self.mqtt_prefix}/listening/set"
         if topic == set_topic:
             if payload in ("on", "1", "true"):
+                self.get_logger().info("Publishing set_listening=True to ROS 2")
                 self.listening_pub.publish(Bool(data=True))
             elif payload in ("off", "0", "false"):
+                self.get_logger().info("Publishing set_listening=False to ROS 2")
                 self.listening_pub.publish(Bool(data=False))
             else:
                 self.get_logger().warning(f"Ignoring unknown payload '{payload}' on {topic}")
@@ -93,7 +95,7 @@ class MQTTBridge(Node):
         state_topic = f"{self.mqtt_prefix}/listening/state"
         payload = "on" if msg.data else "off"
         self.mqtt_client.publish(state_topic, payload, retain=True)
-        self.get_logger().debug(f"Published MQTT: {state_topic} → {payload}")
+        self.get_logger().info(f"Published MQTT: {state_topic} → {payload}")
 
     # ---- Lifecycle ----
 

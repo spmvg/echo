@@ -32,9 +32,43 @@ Notes:
 
 ## Environment variables
 
-- `OPENAI_API_KEY`: Your OpenAI API key for the realtime voice API.
-- `MODEL`: OpenAI model to use (default: `gpt-realtime-mini`).
-- `PROMPT`: Custom personality prompt for the assistant.
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `OPENAI_API_KEY` | **Yes** | — | OpenAI API key for the realtime voice API |
+| `MODEL` | No | `gpt-realtime-mini` | OpenAI model to use |
+| `PROMPT` | No | *(built-in)* | Custom personality prompt for the assistant |
+| `MQTT_BROKER_HOST` | No | — | Hostname/IP of the MQTT broker (enables remote control when set) |
+| `MQTT_BROKER_PORT` | No | `1883` | MQTT broker port |
+| `MQTT_PREFIX` | No | `echo` | Prefix for all MQTT topics |
+
+## Remote control via MQTT (optional)
+
+When `MQTT_BROKER_HOST` is set, the `mqtt_bridge` node connects to the broker and exposes remote control over MQTT.
+If the variable is not set, the bridge is disabled and Echo runs standalone — exactly as without MQTT.
+
+This is designed for use over [Tailscale](https://tailscale.com): the Pi and the MQTT server join the same Tailnet, and you use the Tailscale IP as the broker host.
+
+### Topics
+
+| MQTT topic | Direction | Payload | Description |
+|---|---|---|---|
+| `{prefix}/listening/set` | **→ Pi** | `on` / `off` | Enable or disable wake word listening |
+| `{prefix}/listening/state` | **← Pi** | `on` / `off` | Current listening state (retained) |
+
+`{prefix}` defaults to `echo` (configurable via `MQTT_PREFIX`).
+
+### Example
+
+```bash
+# Disable wake word listening
+mosquitto_pub -h 100.x.x.x -t echo/listening/set -m off
+
+# Enable wake word listening
+mosquitto_pub -h 100.x.x.x -t echo/listening/set -m on
+
+# Monitor state changes
+mosquitto_sub -h 100.x.x.x -t echo/listening/state
+```
 
 ## Setup on Raspberry Pi
 
@@ -83,6 +117,7 @@ The ROS package `echo` contains:
 
 - **`stt_onboard`** — Wake-word detection and OpenAI realtime voice communication
 - **`tts_onboard`** — Local text-to-speech for status announcements
+- **`mqtt_bridge`** — Optional MQTT ↔ ROS 2 bridge for remote control (disabled when `MQTT_BROKER_HOST` is not set)
 - **`initialization`** — Startup checks and status announcements
 
 ## Contributing
