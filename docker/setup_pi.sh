@@ -70,6 +70,25 @@ python3 -m pip install pocketsphinx pyttsx3 sounddevice openai --break-system-pa
 # Beyond this point: RPi-specific setup (not in Dockerfile)
 # ============================================================
 
+# --- Firewall (ufw) ---
+if ! command -v ufw &>/dev/null; then
+    echo ">> Installing ufw..."
+    sudo apt-get install -y ufw
+else
+    echo ">> ufw already found, skipping."
+fi
+
+if ! sudo ufw status | grep -q "Status: active"; then
+    echo ">> Configuring firewall..."
+    sudo ufw default deny incoming
+    sudo ufw default allow outgoing
+    sudo ufw allow 22/tcp comment 'SSH'
+    sudo ufw --force enable
+    echo ">> Firewall enabled."
+else
+    echo ">> Firewall already active, skipping."
+fi
+
 # --- Tailscale ---
 if ! command -v tailscale &>/dev/null; then
     echo ">> Tailscale not found, installing..."
