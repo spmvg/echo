@@ -58,4 +58,18 @@ sudo apt-get install -y \
 echo ">> Installing Python pip packages..."
 python3 -m pip install pocketsphinx pyttsx3 sounddevice openai --break-system-packages --ignore-installed
 
+# ============================================================
+# Beyond this point: RPi-specific setup (not in Dockerfile)
+# ============================================================
+
+# --- Tailscale ---
+if ! command -v tailscale &>/dev/null; then
+    echo ">> Installing Tailscale..."
+    curl -fsSL https://tailscale.com/install.sh | sudo bash
+fi
+
+if ! tailscale status &>/dev/null; then
+    echo ">> Tailscale is installed but not connected. Run: sudo tailscale up"
+fi
+
 echo ">> Setup complete."
