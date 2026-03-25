@@ -55,24 +55,7 @@ sudo apt-get install -y \
     python3-websockets
 
 # --- Python packages (pip) ---
-PIP_PACKAGES="pocketsphinx pyttsx3 sounddevice openai"
-MISSING_PKGS=""
-for pkg in $PIP_PACKAGES; do
-    if ! python3 -c "import ${pkg}" &>/dev/null; then
-        MISSING_PKGS="${MISSING_PKGS} ${pkg}"
-    fi
-done
-if [ -n "$MISSING_PKGS" ]; then
-    echo ">> Installing Python pip packages:${MISSING_PKGS}..."
-    python3 -m pip install $MISSING_PKGS --break-system-packages --ignore-installed
-fi
+echo ">> Installing Python pip packages..."
+python3 -m pip install pocketsphinx pyttsx3 sounddevice openai --break-system-packages --ignore-installed
 
-# --- Shell environment ---
-BASHRC="$HOME/.bashrc"
-ROS_SOURCE_LINE="source /opt/ros/kilted/setup.bash"
-if ! grep -qF "$ROS_SOURCE_LINE" "$BASHRC" 2>/dev/null; then
-    echo ">> Adding ROS 2 source to ~/.bashrc..."
-    echo "$ROS_SOURCE_LINE" >> "$BASHRC"
-fi
-
-echo ">> Setup complete. Open a new shell or run: source ~/.bashrc"
+echo ">> Setup complete."
