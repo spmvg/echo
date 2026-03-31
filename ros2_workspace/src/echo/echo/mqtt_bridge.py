@@ -59,6 +59,16 @@ class MQTTBridge(Node):
         self.mqtt_client.connect_async(self.broker_host, self.broker_port)
         self.mqtt_client.loop_start()  # Non-blocking network loop in a background thread
 
+        # Publish set_listening=True once on startup
+        self.startup_timer = self.create_timer(0.5, self._set_listening_on_startup)
+
+    # ---- MQTT callbacks ----
+
+    def _set_listening_on_startup(self):
+        self.get_logger().info("Startup: publishing set_listening=True")
+        self.listening_pub.publish(Bool(data=True))
+        self.startup_timer.cancel()
+
     # ---- MQTT callbacks ----
 
     def _on_mqtt_connect(self, client, userdata, flags, reason_code, properties=None):
