@@ -6,28 +6,32 @@ def generate_launch_description():
         package='echo',
         executable='stt_onboard',
         name='stt_onboard',
-        output='screen'
+        output='screen',
+        emulate_tty=True,
     )
 
     tts_onboard_node = Node(
         package='echo',
         executable='tts_onboard',
         name='tts_onboard',
-        output='screen'
+        output='screen',
+        emulate_tty=True,
     )
 
     mqtt_bridge_node = Node(
         package='echo',
         executable='mqtt_bridge',
         name='mqtt_bridge',
-        output='screen'
+        output='screen',
+        emulate_tty=True,
     )
 
     initialization_node = Node(
         package='echo',
         executable='initialization',
         name='initialization',
-        output='screen'
+        output='screen',
+        emulate_tty=True,
     )
 
     return LaunchDescription([
