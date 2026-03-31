@@ -1,3 +1,4 @@
+import logging
 import os
 
 import rclpy
@@ -52,7 +53,7 @@ class MQTTBridge(Node):
         self.mqtt_client.on_connect = self._on_mqtt_connect
         self.mqtt_client.on_disconnect = self._on_mqtt_disconnect
         self.mqtt_client.on_message = self._on_mqtt_message
-        self.mqtt_client.enable_logger(self.get_logger())
+        self.mqtt_client.enable_logger(logging.getLogger(__name__))
 
         self.get_logger().info(f"Connecting to MQTT broker at {self.broker_host}:{self.broker_port}")
         self.mqtt_client.connect_async(self.broker_host, self.broker_port)
