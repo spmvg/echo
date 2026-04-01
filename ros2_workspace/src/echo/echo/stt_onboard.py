@@ -8,6 +8,7 @@ import time
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy, HistoryPolicy
 from std_msgs.msg import String, Bool, Int16MultiArray
 
 import sounddevice
@@ -69,12 +70,21 @@ class STTOnboard(Node):
             Int16MultiArray, "/stt_onboard/audio_out", self._on_tts_audio, 10
         )
 
-        # Remote listening control (driven by mqtt_bridge)
+        # Remote listening control (driven externally via rosbridge)
+        # Transient-local (latched) so new subscribers immediately receive the current state.
+        _latched_qos = QoSProfile(
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=ReliabilityPolicy.RELIABLE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
         self.listening_enabled = True
-        self.listening_state_pub = self.create_publisher(Bool, "/stt_onboard/listening_state", 10)
+        self.listening_state_pub = self.create_publisher(Bool, "/stt_onboard/listening_state", _latched_qos)
         self.set_listening_sub = self.create_subscription(
             Bool, "/stt_onboard/set_listening", self._on_set_listening, 10
         )
+        # Publish initial state so rosbridge subscribers receive it immediately
+        self.listening_state_pub.publish(Bool(data=self.listening_enabled))
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         if not self.openai_api_key:
             raise RuntimeError('No OPENAI_API_KEY, cannot proceed.')

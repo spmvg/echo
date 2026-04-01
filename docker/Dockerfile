@@ -24,13 +24,13 @@ RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-inf
 
 # Install ROS 2
 RUN apt-get update && \
-    apt-get install -y ros-kilted-ros-base swig build-essential portaudio19-dev alsa-utils espeak-ng libespeak1
+    apt-get install -y ros-kilted-ros-base ros-kilted-rosbridge-suite swig build-essential portaudio19-dev alsa-utils espeak-ng libespeak1
 
 # Install Python dependencies
 RUN apt-get install -y python3-pip python3-colcon-common-extensions
 RUN apt-get install -y python3-pyaudio python3-requests python3-numpy python3-websockets
 # Python dependencies without distribution via apt
-RUN python3 -m pip install pocketsphinx pyttsx3 sounddevice openai paho-mqtt --break-system-packages --ignore-installed
+RUN python3 -m pip install pocketsphinx pyttsx3 sounddevice openai --break-system-packages --ignore-installed
 
 ENTRYPOINT ["/bin/bash", "-c"]
 WORKDIR /root/ros2_workspace

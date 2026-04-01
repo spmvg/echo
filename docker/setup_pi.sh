@@ -45,6 +45,7 @@ fi
 echo ">> Installing ROS 2 and system packages (already installed packages will be skipped by apt)..."
 sudo apt-get install -y \
     ros-kilted-ros-base \
+    ros-kilted-rosbridge-suite \
     swig \
     build-essential \
     portaudio19-dev \
@@ -64,7 +65,7 @@ sudo apt-get install -y \
 
 # --- Python packages (pip) ---
 echo ">> Installing Python pip packages (pocketsphinx, pyttsx3, sounddevice, openai)..."
-python3 -m pip install pocketsphinx pyttsx3 sounddevice openai paho-mqtt --break-system-packages --ignore-installed
+python3 -m pip install pocketsphinx pyttsx3 sounddevice openai --break-system-packages --ignore-installed
 
 # ============================================================
 # Beyond this point: RPi-specific setup (not in Dockerfile)
@@ -83,10 +84,13 @@ if ! sudo ufw status | grep -q "Status: active"; then
     sudo ufw default deny incoming
     sudo ufw default allow outgoing
     sudo ufw allow 22/tcp comment 'SSH'
+    sudo ufw allow 9090/tcp comment 'rosbridge WebSocket'
     sudo ufw --force enable
     echo ">> Firewall enabled."
 else
     echo ">> Firewall already active, skipping."
+    # Ensure rosbridge port is open even if firewall was already active
+    sudo ufw allow 9090/tcp comment 'rosbridge WebSocket'
 fi
 
 # --- Tailscale ---

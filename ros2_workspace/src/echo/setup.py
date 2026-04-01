@@ -31,7 +31,6 @@ setup(
             'stt_onboard = echo.stt_onboard:main',
             'tts_onboard = echo.tts_onboard:main',
             'initialization = echo.initialization:main',
-            'mqtt_bridge = echo.mqtt_bridge:main',
         ],
     },
 )

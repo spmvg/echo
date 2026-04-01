@@ -37,38 +37,101 @@ Notes:
 | `OPENAI_API_KEY` | **Yes** | — | OpenAI API key for the realtime voice API |
 | `MODEL` | No | `gpt-realtime-mini` | OpenAI model to use |
 | `PROMPT` | No | *(built-in)* | Custom personality prompt for the assistant |
-| `MQTT_BROKER_HOST` | No | — | Hostname/IP of the MQTT broker (enables remote control when set) |
-| `MQTT_BROKER_PORT` | No | `1883` | MQTT broker port |
-| `MQTT_PREFIX` | No | `echo` | Prefix for all MQTT topics |
 
-## Remote control via MQTT (optional)
+## Remote control via rosbridge
 
-When `MQTT_BROKER_HOST` is set, the `mqtt_bridge` node connects to the broker and exposes remote control over MQTT.
-If the variable is not set, the bridge is disabled and Echo runs standalone — exactly as without MQTT.
+Echo exposes its ROS 2 topics over a standard [rosbridge WebSocket](https://github.com/RobotWebTools/rosbridge_suite) server running on **port 9090**.
+Any device that can reach the Pi over the network can publish and subscribe to topics using the [rosbridge protocol](https://github.com/RobotWebTools/rosbridge_suite/blob/ros2/ROSBRIDGE_PROTOCOL.md) — a simple JSON-over-WebSocket API.
+No extra broker or cloud service is needed.
 
-This is designed for use over [Tailscale](https://tailscale.com): the Pi and the MQTT server join the same Tailnet, and you use the Tailscale IP as the broker host.
+### ROS 2 topics
 
-### Topics
-
-| MQTT topic | Direction | Payload | Description |
+| Topic | Type | Direction | Description |
 |---|---|---|---|
-| `{prefix}/listening/set` | **→ Pi** | `on` / `off` | Enable or disable wake word listening |
-| `{prefix}/listening/state` | **← Pi** | `on` / `off` | Current listening state (retained) |
+| `/stt_onboard/set_listening` | `std_msgs/Bool` | → Pi | `true` to enable wake word, `false` to disable |
+| `/stt_onboard/listening_state` | `std_msgs/Bool` | ← Pi | Current listening state (latched — new subscribers get the latest value immediately) |
 
-`{prefix}` defaults to `echo` (configurable via `MQTT_PREFIX`).
+### Rosbridge WebSocket protocol
 
-### Example
+Connect to `ws://<PI_IP>:9090` and send/receive JSON frames.
+
+**Publish a message** (set listening on or off):
+
+```json
+{
+  "op": "publish",
+  "topic": "/stt_onboard/set_listening",
+  "msg": { "data": true }
+}
+```
+
+**Subscribe to listening state** (receive updates whenever the state changes):
+
+```json
+{
+  "op": "subscribe",
+  "topic": "/stt_onboard/listening_state",
+  "type": "std_msgs/Bool"
+}
+```
+
+Each state update arrives as:
+
+```json
+{
+  "op": "publish",
+  "topic": "/stt_onboard/listening_state",
+  "msg": { "data": true }
+}
+```
+
+### Quick test from the command line
+
+Install [`websocat`](https://github.com/vi/websocat) (or any WebSocket CLI), then:
 
 ```bash
 # Disable wake word listening
-mosquitto_pub -h 100.x.x.x -t echo/listening/set -m off
+echo '{"op":"publish","topic":"/stt_onboard/set_listening","msg":{"data":false}}' \
+  | websocat ws://PI_IP:9090
 
 # Enable wake word listening
-mosquitto_pub -h 100.x.x.x -t echo/listening/set -m on
+echo '{"op":"publish","topic":"/stt_onboard/set_listening","msg":{"data":true}}' \
+  | websocat ws://PI_IP:9090
 
-# Monitor state changes
-mosquitto_sub -h 100.x.x.x -t echo/listening/state
+# Subscribe and watch state changes (stays open)
+echo '{"op":"subscribe","topic":"/stt_onboard/listening_state","type":"std_msgs/Bool"}' \
+  | websocat ws://PI_IP:9090
 ```
+
+### Python example
+
+```python
+import asyncio, json
+import websockets
+
+PI_IP = "192.168.x.x"  # or Tailscale IP
+
+async def main():
+    async with websockets.connect(f"ws://{PI_IP}:9090") as ws:
+        # Subscribe to listening state
+        await ws.send(json.dumps({
+            "op": "subscribe",
+            "topic": "/stt_onboard/listening_state",
+            "type": "std_msgs/Bool",
+        }))
+        state = await ws.recv()
+        print("Current state:", json.loads(state))
+
+        # Disable listening
+        await ws.send(json.dumps({
+            "op": "publish",
+            "topic": "/stt_onboard/set_listening",
+            "msg": {"data": False},
+        }))
+
+asyncio.run(main())
+```
+
 
 ## Setup on Raspberry Pi
 
@@ -117,7 +180,7 @@ The ROS package `echo` contains:
 
 - **`stt_onboard`** — Wake-word detection and OpenAI realtime voice communication
 - **`tts_onboard`** — Local text-to-speech for status announcements
-- **`mqtt_bridge`** — Optional MQTT ↔ ROS 2 bridge for remote control (disabled when `MQTT_BROKER_HOST` is not set)
+- **`rosbridge_websocket`** — Exposes all ROS 2 topics over WebSocket on port 9090 for remote control
 - **`initialization`** — Startup checks and status announcements
 
 ## Contributing

@@ -1,6 +1,7 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
+
 def generate_launch_description():
     stt_onboard_node = Node(
         package='echo',
@@ -16,11 +17,13 @@ def generate_launch_description():
         output='screen'
     )
 
-    mqtt_bridge_node = Node(
-        package='echo',
-        executable='mqtt_bridge',
-        name='mqtt_bridge',
-        output='screen'
+    # rosbridge exposes all ROS 2 topics/services over WebSocket (port 9090)
+    rosbridge_node = Node(
+        package='rosbridge_server',
+        executable='rosbridge_websocket',
+        name='rosbridge_websocket',
+        output='screen',
+        parameters=[{'port': 9090}],
     )
 
     initialization_node = Node(
@@ -33,6 +36,6 @@ def generate_launch_description():
     return LaunchDescription([
         stt_onboard_node,
         tts_onboard_node,
-        mqtt_bridge_node,
+        rosbridge_node,
         initialization_node,
     ])
