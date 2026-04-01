@@ -119,7 +119,7 @@ class STTOnboard(Node):
         else:
             self.get_logger().debug(f"set_listening received but already {'enabled' if msg.data else 'disabled'}, no change")
 
-        # Publish current state for feedback (mqtt_bridge forwards to MQTT)
+        # Publish current state so rosbridge subscribers receive it
         self.listening_state_pub.publish(Bool(data=self.listening_enabled))
 
     def _on_tts_audio(self, msg: Int16MultiArray):
