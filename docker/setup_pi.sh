@@ -79,19 +79,13 @@ else
     echo ">> ufw already found, skipping."
 fi
 
-if ! sudo ufw status | grep -q "Status: active"; then
-    echo ">> Configuring firewall..."
-    sudo ufw default deny incoming
-    sudo ufw default allow outgoing
-    sudo ufw allow 22/tcp comment 'SSH'
-    sudo ufw allow 9090/tcp comment 'rosbridge WebSocket'
-    sudo ufw --force enable
-    echo ">> Firewall enabled."
-else
-    echo ">> Firewall already active, skipping."
-    # Ensure rosbridge port is open even if firewall was already active
-    sudo ufw allow 9090/tcp comment 'rosbridge WebSocket'
-fi
+echo ">> Configuring firewall rules..."
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 22/tcp comment 'SSH'
+sudo ufw allow 9090/tcp comment 'rosbridge WebSocket'
+sudo ufw --force enable
+echo ">> Firewall configured."
 
 # --- Tailscale ---
 if ! command -v tailscale &>/dev/null; then
