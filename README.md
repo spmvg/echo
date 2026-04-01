@@ -85,23 +85,6 @@ Each state update arrives as:
 }
 ```
 
-### Quick test from the command line
-
-Install [`websocat`](https://github.com/vi/websocat) (or any WebSocket CLI), then:
-
-```bash
-# Disable wake word listening
-echo '{"op":"publish","topic":"/stt_onboard/set_listening","msg":{"data":false}}' \
-  | websocat ws://PI_IP:9090
-
-# Enable wake word listening
-echo '{"op":"publish","topic":"/stt_onboard/set_listening","msg":{"data":true}}' \
-  | websocat ws://PI_IP:9090
-
-# Subscribe and watch state changes (stays open)
-echo '{"op":"subscribe","topic":"/stt_onboard/listening_state","type":"std_msgs/Bool"}' \
-  | websocat ws://PI_IP:9090
-```
 
 ### Python example
 
