@@ -29,10 +29,10 @@ class MQTTBridge(Node):
                 "data": { <message fields> }
             }
 
-        Configure allowed topics via the MQTT_ALLOWED_TOPICS environment variable
+        Configure allowed topics via the MQTT_RELAY_INPUT_TOPICS environment variable
         (JSON array, evaluated once at startup):
 
-            MQTT_ALLOWED_TOPICS='[
+            MQTT_RELAY_INPUT_TOPICS='[
                 {"topic": "/cmd_vel", "type": "geometry_msgs/msg/Twist"},
                 {"topic": "/my_topic", "type": "std_msgs/msg/String"}
             ]'
@@ -67,7 +67,7 @@ class MQTTBridge(Node):
             Bool, "/stt_onboard/listening_state", self._on_listening_state, 10
         )
 
-        # Generic relay: parse allowed topics and pre-create publishers
+        # Generic relay: parse allowed input topics and pre-create publishers
         self.allowed_topics: dict[str, str] = self._parse_allowed_topics()
         self._relay_publishers: dict[str, rclpy.publisher.Publisher] = {}
         for ros2_topic, msg_type in self.allowed_topics.items():
@@ -108,8 +108,8 @@ class MQTTBridge(Node):
     # ---- Helpers ----
 
     def _parse_allowed_topics(self) -> dict[str, str]:
-        """Parse MQTT_ALLOWED_TOPICS into a {ros2_topic: msg_type} dict."""
-        raw = os.getenv("MQTT_ALLOWED_TOPICS", "").strip()
+        """Parse MQTT_RELAY_INPUT_TOPICS into a {ros2_topic: msg_type} dict."""
+        raw = os.getenv("MQTT_RELAY_INPUT_TOPICS", "").strip()
         if not raw:
             return {}
         try:
@@ -120,7 +120,7 @@ class MQTTBridge(Node):
             )
             return result
         except Exception as exc:
-            self.get_logger().error(f"Failed to parse MQTT_ALLOWED_TOPICS: {exc}")
+            self.get_logger().error(f"Failed to parse MQTT_RELAY_INPUT_TOPICS: {exc}")
             return {}
 
     @staticmethod
