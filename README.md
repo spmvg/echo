@@ -90,32 +90,7 @@ Each state update arrives as:
 
 ### Python example
 
-```python
-import asyncio, json
-import websockets
-
-PI_IP = "192.168.x.x"  # or Tailscale IP
-
-async def main():
-    async with websockets.connect(f"ws://{PI_IP}:9090") as ws:
-        # Subscribe to listening state
-        await ws.send(json.dumps({
-            "op": "subscribe",
-            "topic": "/stt_onboard/listening_state",
-            "type": "std_msgs/Bool",
-        }))
-        state = await ws.recv()
-        print("Current state:", json.loads(state))
-
-        # Disable listening
-        await ws.send(json.dumps({
-            "op": "publish",
-            "topic": "/stt_onboard/set_listening",
-            "msg": {"data": False},
-        }))
-
-asyncio.run(main())
-```
+See [`examples/set_listening.py`](examples/set_listening.py) for a ready-to-run script that reads the current listening state and toggles it.
 
 
 ## Setup on Raspberry Pi
