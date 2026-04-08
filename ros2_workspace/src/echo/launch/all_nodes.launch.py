@@ -26,8 +26,8 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'port': 9090,
-            # Whitelist: only expose the remote listening-control topics.
-            'topics_glob': '["/stt_onboard/set_listening", "/stt_onboard/listening_state"]',
+            # Whitelist: only expose topics under /stt_onboard/ (set_listening + listening_state).
+            'topics_glob': '["/stt_onboard/*"]',
         }],
     )
 
