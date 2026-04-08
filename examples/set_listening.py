@@ -11,7 +11,7 @@ import json
 
 import websockets
 
-PI_IP = "192.168.x.x"  # or Tailscale IP
+PI_IP = "100.x.y.z"
 
 
 async def main():
