@@ -78,7 +78,9 @@ class STTOnboard(Node):
             history=HistoryPolicy.KEEP_LAST,
             depth=1,
         )
-        self.listening_enabled = True
+        # Allow disabling listening on startup via environment variable.
+        # Set LISTENING_DISABLED to any non-empty value (e.g. "1" or "true") to start muted.
+        self.listening_enabled = not bool(os.getenv("LISTENING_DISABLED", ""))
         self.listening_state_pub = self.create_publisher(Bool, "/stt_onboard/listening_state", _latched_qos)
         self.set_listening_sub = self.create_subscription(
             Bool, "/stt_onboard/set_listening", self._on_set_listening, 10
@@ -102,7 +104,8 @@ class STTOnboard(Node):
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
-        self.get_logger().info("STTOnboard listener started (listening_enabled=True)")
+        state_str = "disabled" if not self.listening_enabled else "enabled"
+        self.get_logger().info(f"STTOnboard listener started (listening_enabled={self.listening_enabled})")
 
     def _on_set_listening(self, msg: Bool):
         """Enable or disable wake word listening via remote command."""

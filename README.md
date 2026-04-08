@@ -37,6 +37,8 @@ Notes:
 | `OPENAI_API_KEY` | **Yes** | — | OpenAI API key for the realtime voice API |
 | `MODEL` | No | `gpt-realtime-mini` | OpenAI model to use |
 | `PROMPT` | No | *(built-in)* | Custom personality prompt for the assistant |
+| `LISTENING_DISABLED` | No | *(unset)* | Set to any non-empty value (e.g. `1`) to start with wake-word listening **off**. Echo will announce *"Listening disabled"* on startup and wait for a remote `/stt_onboard/set_listening` command to enable it. |
+| `INACTIVITY_TIMEOUT` | No | `10` | Seconds of silence before a conversation is automatically closed |
 
 ## Remote control via rosbridge
 
