@@ -41,9 +41,8 @@ class Initialization(Node):
         prompt = getenv("PROMPT")
         if prompt:
             self.get_logger().info(f"Prompt configured: {prompt}")
-            self.pub.publish(String(data="Custom prompt configured"))
         else:
-            self.pub.publish(String(data="Using default prompt"))
+            self.get_logger().info("Using default prompt")
 
     def _wait_for_node(self, node_name: str, timeout_sec: float = 30.0):
         """Wait for a node to become available using ROS2 graph API."""
