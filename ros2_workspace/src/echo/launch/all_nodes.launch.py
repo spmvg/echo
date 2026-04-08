@@ -17,13 +17,18 @@ def generate_launch_description():
         output='screen'
     )
 
-    # rosbridge exposes all ROS 2 topics/services over WebSocket (port 9090)
+    # rosbridge exposes selected ROS 2 topics over WebSocket (port 9090).
+    # Only the topics listed in topics_glob are accessible to external clients.
     rosbridge_node = Node(
         package='rosbridge_server',
         executable='rosbridge_websocket',
         name='rosbridge_websocket',
         output='screen',
-        parameters=[{'port': 9090}],
+        parameters=[{
+            'port': 9090,
+            # Whitelist: only expose the remote listening-control topics.
+            'topics_glob': '["/stt_onboard/set_listening", "/stt_onboard/listening_state"]',
+        }],
     )
 
     initialization_node = Node(
