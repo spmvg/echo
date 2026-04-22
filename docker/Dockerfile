@@ -24,7 +24,7 @@ RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-inf
 
 # Install ROS 2
 RUN apt-get update && \
-    apt-get install -y ros-kilted-ros-base swig build-essential portaudio19-dev alsa-utils espeak-ng libespeak1
+    apt-get install -y ros-kilted-ros-base ros-kilted-rosbridge-suite swig build-essential portaudio19-dev alsa-utils espeak-ng libespeak1
 
 # Install Python dependencies
 RUN apt-get install -y python3-pip python3-colcon-common-extensions

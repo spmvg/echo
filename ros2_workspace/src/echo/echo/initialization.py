@@ -20,6 +20,10 @@ class Initialization(Node):
         self._wait_for_node("stt_onboard", timeout_sec=30.0)
         self.pub.publish(String(data="Power on"))
 
+        if getenv("LISTENING_DISABLED", ""):
+            self.get_logger().info("LISTENING_DISABLED is set — starting with listening off")
+            self.pub.publish(String(data="Listening disabled"))
+
         try:
             requests.get("https://www.google.com", timeout=5)
             self.get_logger().info("Internet connected")
@@ -37,9 +41,8 @@ class Initialization(Node):
         prompt = getenv("PROMPT")
         if prompt:
             self.get_logger().info(f"Prompt configured: {prompt}")
-            self.pub.publish(String(data="Custom prompt configured"))
         else:
-            self.pub.publish(String(data="Using default prompt"))
+            self.get_logger().info("Using default prompt")
 
     def _wait_for_node(self, node_name: str, timeout_sec: float = 30.0):
         """Wait for a node to become available using ROS2 graph API."""

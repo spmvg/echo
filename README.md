@@ -32,9 +32,66 @@ Notes:
 
 ## Environment variables
 
-- `OPENAI_API_KEY`: Your OpenAI API key for the realtime voice API.
-- `MODEL`: OpenAI model to use (default: `gpt-realtime-mini`).
-- `PROMPT`: Custom personality prompt for the assistant.
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `OPENAI_API_KEY` | **Yes** | — | OpenAI API key for the realtime voice API |
+| `MODEL` | No | `gpt-realtime-mini` | OpenAI model to use |
+| `PROMPT` | No | *(built-in)* | Custom personality prompt for the assistant |
+| `LISTENING_DISABLED` | No | *(unset)* | Set to any non-empty value (e.g. `1`) to start with wake-word listening **off**. Echo will announce *"Listening disabled"* on startup and wait for a remote `/stt_onboard/set_listening` command to enable it. |
+| `INACTIVITY_TIMEOUT` | No | `10` | Seconds of silence before a conversation is automatically closed |
+
+## Remote control via rosbridge
+
+Echo exposes its ROS 2 topics over a standard [rosbridge WebSocket](https://github.com/RobotWebTools/rosbridge_suite) server running on **port 9090**.
+Any device that can reach the Pi over the network can publish and subscribe to topics using the [rosbridge protocol](https://github.com/RobotWebTools/rosbridge_suite/blob/ros2/ROSBRIDGE_PROTOCOL.md) — a simple JSON-over-WebSocket API.
+No extra broker or cloud service is needed.
+
+### ROS 2 topics
+
+| Topic | Type | Direction | Description |
+|---|---|---|---|
+| `/stt_onboard/set_listening` | `std_msgs/Bool` | → Pi | `true` to enable wake word, `false` to disable |
+| `/stt_onboard/listening_state` | `std_msgs/Bool` | ← Pi | Current listening state (latched — new subscribers get the latest value immediately) |
+
+### Rosbridge WebSocket protocol
+
+Connect to `ws://<PI_IP>:9090` and send/receive JSON frames.
+
+**Publish a message** (set listening on or off):
+
+```json
+{
+  "op": "publish",
+  "topic": "/stt_onboard/set_listening",
+  "msg": { "data": true }
+}
+```
+
+**Subscribe to listening state** (receive updates whenever the state changes):
+
+```json
+{
+  "op": "subscribe",
+  "topic": "/stt_onboard/listening_state",
+  "type": "std_msgs/Bool"
+}
+```
+
+Each state update arrives as:
+
+```json
+{
+  "op": "publish",
+  "topic": "/stt_onboard/listening_state",
+  "msg": { "data": true }
+}
+```
+
+
+### Python example
+
+See [`examples/set_listening.py`](examples/set_listening.py) for a ready-to-run script that reads the current listening state and toggles it.
+
 
 ## Setup on Raspberry Pi
 
@@ -83,6 +140,7 @@ The ROS package `echo` contains:
 
 - **`stt_onboard`** — Wake-word detection and OpenAI realtime voice communication
 - **`tts_onboard`** — Local text-to-speech for status announcements
+- **`rosbridge_websocket`** — Exposes all ROS 2 topics over WebSocket on port 9090 for remote control
 - **`initialization`** — Startup checks and status announcements
 
 ## Contributing

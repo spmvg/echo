@@ -8,7 +8,8 @@ import time
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String, Int16MultiArray
+from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy, HistoryPolicy
+from std_msgs.msg import String, Bool, Int16MultiArray
 
 import sounddevice
 import numpy as np
@@ -68,6 +69,24 @@ class STTOnboard(Node):
         self.audio_sub = self.create_subscription(
             Int16MultiArray, "/stt_onboard/audio_out", self._on_tts_audio, 10
         )
+
+        # Remote listening control (driven externally via rosbridge)
+        # Transient-local (latched) so new subscribers immediately receive the current state.
+        _latched_qos = QoSProfile(
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=ReliabilityPolicy.RELIABLE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
+        # Allow disabling listening on startup via environment variable.
+        # Set LISTENING_DISABLED to any non-empty value (e.g. "1" or "true") to start muted.
+        self.listening_enabled = not bool(os.getenv("LISTENING_DISABLED", ""))
+        self.listening_state_pub = self.create_publisher(Bool, "/stt_onboard/listening_state", _latched_qos)
+        self.set_listening_sub = self.create_subscription(
+            Bool, "/stt_onboard/set_listening", self._on_set_listening, 10
+        )
+        # Publish initial state so rosbridge subscribers receive it immediately
+        self.listening_state_pub.publish(Bool(data=self.listening_enabled))
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
         if not self.openai_api_key:
             raise RuntimeError('No OPENAI_API_KEY, cannot proceed.')
@@ -85,7 +104,26 @@ class STTOnboard(Node):
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
-        self.get_logger().info("STTOnboard listener started")
+        state_str = "disabled" if not self.listening_enabled else "enabled"
+        self.get_logger().info(f"STTOnboard listener started (listening_enabled={self.listening_enabled})")
+
+    def _on_set_listening(self, msg: Bool):
+        """Enable or disable wake word listening via remote command."""
+        prev = self.listening_enabled
+        self.listening_enabled = msg.data
+
+        if prev != msg.data:
+            state = "enabled" if msg.data else "disabled"
+            self.get_logger().info(f"Wake word listening {state} (was {'enabled' if prev else 'disabled'})")
+
+            if not msg.data and self.mode == CONVERSATION_MODE:
+                self.get_logger().info("Listening disabled while in conversation — ending conversation")
+                self.end_conversation()
+        else:
+            self.get_logger().debug(f"set_listening received but already {'enabled' if msg.data else 'disabled'}, no change")
+
+        # Publish current state so rosbridge subscribers receive it
+        self.listening_state_pub.publish(Bool(data=self.listening_enabled))
 
     def _on_tts_audio(self, msg: Int16MultiArray):
         """Receive audio from tts_onboard and add to output buffer for playback."""
@@ -312,6 +350,9 @@ class STTOnboard(Node):
                     continue
 
                 if self.mode == WAKE_WORD_MODE:
+                    if not self.listening_enabled:
+                        continue
+
                     # Feed audio to PocketSphinx for wake word detection
                     raw = audio_data.tobytes()
                     decoder.process_raw(raw, False, False)
