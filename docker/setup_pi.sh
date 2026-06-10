@@ -44,8 +44,8 @@ fi
 # --- ROS 2 and system packages ---
 echo ">> Installing ROS 2 and system packages (already installed packages will be skipped by apt)..."
 sudo apt-get install -y \
-    ros-kilted-ros-base \
-    ros-kilted-rosbridge-suite \
+    ros-jazzy-ros-base \
+    ros-jazzy-rosbridge-suite \
     swig \
     build-essential \
     portaudio19-dev \

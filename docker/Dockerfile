@@ -24,7 +24,7 @@ RUN export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-inf
 
 # Install ROS 2
 RUN apt-get update && \
-    apt-get install -y ros-kilted-ros-base ros-kilted-rosbridge-suite swig build-essential portaudio19-dev alsa-utils espeak-ng libespeak1
+    apt-get install -y ros-jazzy-ros-base ros-jazzy-rosbridge-suite swig build-essential portaudio19-dev alsa-utils espeak-ng libespeak1
 
 # Install Python dependencies
 RUN apt-get install -y python3-pip python3-colcon-common-extensions
@@ -35,4 +35,4 @@ RUN python3 -m pip install pocketsphinx pyttsx3 sounddevice openai --break-syste
 ENTRYPOINT ["/bin/bash", "-c"]
 WORKDIR /root/ros2_workspace
 
-CMD ["source /opt/ros/kilted/setup.bash && colcon build --symlink-install && source install/local_setup.bash && ros2 launch echo all_nodes.launch.py"]
+CMD ["source /opt/ros/jazzy/setup.bash && colcon build --symlink-install && source install/local_setup.bash && ros2 launch echo all_nodes.launch.py"]
