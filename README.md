@@ -121,7 +121,7 @@ pcm.!default {
 
 ```bash
 cd echo/ros2_workspace
-source /opt/ros/kilted/setup.bash
+source /opt/ros/jazzy/setup.bash
 colcon build --symlink-install
 source install/local_setup.bash
 ros2 launch echo all_nodes.launch.py
