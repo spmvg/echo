@@ -3,16 +3,19 @@ import base64
 import json
 import os
 import queue
+import tempfile
 import threading
 import time
+import wave
 
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy, HistoryPolicy
-from std_msgs.msg import String, Bool, Int16MultiArray
+from std_msgs.msg import String, Bool
 
 import sounddevice
 import numpy as np
+import pyttsx3
 import websockets
 
 try:
@@ -37,6 +40,7 @@ DTYPE = "int16"
 CHUNK_SIZE = 4096  # Larger chunks to reduce callback frequency on RPi
 INACTIVITY_TIMEOUT = float(os.getenv("INACTIVITY_TIMEOUT", "10"))  # Seconds without model response before closing conversation
 MIC_MUTE_DEBOUNCE = 0.5  # Seconds to keep mic muted after audio playback stops
+TTS_SILENCE_SECONDS = 1.0
 
 
 def pcm16_to_base64(audio: np.ndarray) -> str:
@@ -65,9 +69,8 @@ class STTOnboard(Node):
         super().__init__("stt_onboard")
         self.pub = self.create_publisher(String, "/tts_onboard/say", 10)
         self.ai_pub = self.create_publisher(String, "/speech_ai/audio", 10)
-        # Subscribe to audio from tts_onboard for playback (avoids audio device conflicts)
-        self.audio_sub = self.create_subscription(
-            Int16MultiArray, "/stt_onboard/audio_out", self._on_tts_audio, 10
+        self.tts_sub = self.create_subscription(
+            String, "/tts_onboard/say", self._on_tts_text, 10
         )
 
         # Remote listening control (driven externally via rosbridge)
@@ -97,10 +100,18 @@ class STTOnboard(Node):
         self.audio_out_buffer = np.array([], dtype=DTYPE)  # Continuous audio buffer
         self.audio_out_lock = threading.Lock()
         self.audio_in_queue = queue.Queue()
+        self.tts_queue = queue.Queue(maxsize=32)
+        self.tts_stop_event = threading.Event()
+        self.tts_engine = pyttsx3.init()
+        self.tts_rate = 130
+        self.tts_engine.setProperty("rate", self.tts_rate)
         self.lock = threading.Lock()
         self.loop = None
         self.last_activity = 0.0  # Timestamp of last activity (audio received from OpenAI)
-        self.last_audio_played = 0.0  # Timestamp of last audio playback (for mic muting)
+        self.last_audio_played = time.time()  # Updated by the speaker callback when audio is output
+
+        self.tts_worker = threading.Thread(target=self._tts_worker_loop, daemon=True)
+        self.tts_worker.start()
 
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
@@ -125,12 +136,76 @@ class STTOnboard(Node):
         # Publish current state so rosbridge subscribers receive it
         self.listening_state_pub.publish(Bool(data=self.listening_enabled))
 
-    def _on_tts_audio(self, msg: Int16MultiArray):
-        """Receive audio from tts_onboard and add to output buffer for playback."""
-        audio = np.array(msg.data, dtype=DTYPE)
+    def _on_tts_text(self, msg: String):
+        """Queue status text for speech during a quiet period on the speaker."""
+        try:
+            self.tts_queue.put_nowait(msg.data)
+        except queue.Full:
+            self.get_logger().warning("TTS queue full - dropping incoming message")
+
+    def _speaker_is_idle(self):
         with self.audio_out_lock:
-            self.audio_out_buffer = np.append(self.audio_out_buffer, audio)
-        self.get_logger().debug(f"Received {len(audio)} audio samples from tts_onboard")
+            return (
+                len(self.audio_out_buffer) == 0
+                and time.time() - self.last_audio_played >= TTS_SILENCE_SECONDS
+            )
+
+    def _generate_speech(self, text: str):
+        """Generate speech and append it to the speaker output buffer."""
+        self.tts_engine.setProperty("rate", self.tts_rate)
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tf:
+            self.tts_engine.save_to_file(text, tf.name)
+            self.tts_engine.runAndWait()
+
+            with wave.open(tf.name, "rb") as wf:
+                n_channels = wf.getnchannels()
+                sampwidth = wf.getsampwidth()
+                framerate = wf.getframerate()
+                data = wf.readframes(wf.getnframes())
+
+            dtype_map = {1: np.int8, 2: np.int16, 4: np.int32}
+            dtype = dtype_map.get(sampwidth, np.int16)
+            audio = np.frombuffer(data, dtype=dtype)
+            if dtype != np.int16:
+                audio = (
+                    audio.astype(np.float32)
+                    / np.iinfo(dtype).max
+                    * np.iinfo(np.int16).max
+                ).astype(np.int16)
+
+            if n_channels > 1:
+                audio = audio.reshape(-1, n_channels).mean(axis=1).astype(np.int16)
+
+            audio = resample_audio(audio, framerate, SAMPLE_RATE)
+            if len(audio) == 0:
+                self.get_logger().warning("Generated empty audio, skipping playback")
+                return
+
+            with self.audio_out_lock:
+                self.audio_out_buffer = np.append(self.audio_out_buffer, audio)
+
+    def _tts_worker_loop(self):
+        while not self.tts_stop_event.is_set():
+            try:
+                text = self.tts_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+
+            while not self.tts_stop_event.is_set() and not self._speaker_is_idle():
+                time.sleep(0.1)
+
+            if self.tts_stop_event.is_set():
+                break
+            try:
+                self._generate_speech(text)
+            except Exception as e:
+                self.get_logger().error(f"Error generating speech: {e}")
+
+    def destroy_node(self):
+        self.tts_stop_event.set()
+        self.tts_worker.join(timeout=1.0)
+        self.tts_engine.stop()
+        return super().destroy_node()
 
     async def ws_send(self, data: dict):
         """Send data to WebSocket if connected."""

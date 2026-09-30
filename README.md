@@ -52,6 +52,7 @@ No extra broker or cloud service is needed.
 |---|---|---|---|
 | `/stt_onboard/set_listening` | `std_msgs/Bool` | → Pi | `true` to enable wake word, `false` to disable |
 | `/stt_onboard/listening_state` | `std_msgs/Bool` | ← Pi | Current listening state (latched — new subscribers get the latest value immediately) |
+| `/tts_onboard/say` | `std_msgs/String` | → Pi | Text-to-speech status message; spoken when the speaker has been silent for one second |
 
 ### Rosbridge WebSocket protocol
 
@@ -64,6 +65,16 @@ Connect to `ws://<PI_IP>:9090` and send/receive JSON frames.
   "op": "publish",
   "topic": "/stt_onboard/set_listening",
   "msg": { "data": true }
+}
+```
+
+**Publish a text-to-speech message**:
+
+```json
+{
+  "op": "publish",
+  "topic": "/tts_onboard/say",
+  "msg": { "data": "System message" }
 }
 ```
 
@@ -138,8 +149,7 @@ ros2 launch echo all_nodes.launch.py
 
 The ROS package `echo` contains:
 
-- **`stt_onboard`** — Wake-word detection and OpenAI realtime voice communication
-- **`tts_onboard`** — Local text-to-speech for status announcements
+- **`stt_onboard`** — Wake-word detection, OpenAI realtime voice communication, speaker playback, and local text-to-speech for status announcements
 - **`rosbridge_websocket`** — Exposes all ROS 2 topics over WebSocket on port 9090 for remote control
 - **`initialization`** — Startup checks and status announcements
 
