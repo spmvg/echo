@@ -220,7 +220,6 @@ class STTOnboard(Node):
         """Handle WebSocket connection and messages."""
         headers = {
             "Authorization": f"Bearer {self.openai_api_key}",
-            "OpenAI-Beta": "realtime=v1"
         }
 
         prompt = os.getenv("PROMPT") or f"Your personality is: helpful, creative, clever, and friendly."
@@ -236,14 +235,26 @@ class STTOnboard(Node):
                 session_update = {
                     "type": "session.update",
                     "session": {
-                        "modalities": ["audio", "text"],
-                        "input_audio_format": "pcm16",
-                        "output_audio_format": "pcm16",
-                        "turn_detection": {
-                            "type": "server_vad",
-                            "threshold": 0.5,
-                            "prefix_padding_ms": 300,
-                            "silence_duration_ms": 500
+                        "type": "realtime",
+                        "audio": {
+                            "input": {
+                                "format": {
+                                    "type": "audio/pcm",
+                                    "rate": OPENAI_SAMPLE_RATE
+                                },
+                                "turn_detection": {
+                                    "type": "server_vad",
+                                    "threshold": 0.5,
+                                    "prefix_padding_ms": 300,
+                                    "silence_duration_ms": 500
+                                }
+                            },
+                            "output": {
+                                "format": {
+                                    "type": "audio/pcm",
+                                    "rate": OPENAI_SAMPLE_RATE
+                                }
+                            }
                         },
                         "instructions": (
                             f"You are a concise voice assistant named Echo. {prompt}\n\n"
@@ -257,7 +268,7 @@ class STTOnboard(Node):
                 await ws.send(json.dumps({
                     "type": "response.create",
                     "response": {
-                        "modalities": ["audio", "text"]
+                        "output_modalities": ["audio"]
                     }
                 }))
 
@@ -280,7 +291,7 @@ class STTOnboard(Node):
         event = json.loads(message)
         event_type = event.get("type", "")
 
-        if event_type == "response.audio.delta":
+        if event_type == "response.output_audio.delta":
             audio = base64_to_pcm16(event["delta"])
             # Resample from OpenAI's 24kHz to our 16kHz
             audio = resample_audio(audio, OPENAI_SAMPLE_RATE, SAMPLE_RATE)
@@ -289,7 +300,7 @@ class STTOnboard(Node):
                 self.audio_out_buffer = np.append(self.audio_out_buffer, audio)
             # Note: last_activity is updated in speaker_callback when audio finishes playing
 
-        elif event_type == "response.audio.done":
+        elif event_type == "response.output_audio.done":
             self.get_logger().debug("Audio response complete")
 
         elif event_type == "response.done":
