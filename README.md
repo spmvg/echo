@@ -52,7 +52,7 @@ No extra broker or cloud service is needed.
 |---|---|---|---|
 | `/stt_onboard/set_listening` | `std_msgs/Bool` | → Pi | `true` to enable wake word, `false` to disable |
 | `/stt_onboard/listening_state` | `std_msgs/Bool` | ← Pi | Current listening state (latched — new subscribers get the latest value immediately) |
-| `/tts_onboard/say` | `std_msgs/String` | → Pi | Text-to-speech status message; spoken when the speaker has been silent for one second |
+| `/tts_onboard/say` | `std_msgs/String` | → Pi | Text-to-speech messages |
 
 ### Rosbridge WebSocket protocol
 
