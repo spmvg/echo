@@ -11,7 +11,7 @@ import json
 
 import websockets
 
-PI_IP = "100.x.y.z"
+PI_IP = "localhost"
 
 
 async def main():
