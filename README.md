@@ -21,6 +21,7 @@ Run the container with access to host sound devices (Linux):
 export OPENAI_API_KEY=your_openai_key_here
 docker run -it --rm \
   --env OPENAI_API_KEY=$OPENAI_API_KEY \
+  -p 9090:9090 \
   --device /dev/snd \
   -v $(pwd)/ros2_workspace:/root/ros2_workspace \
   echo
